@@ -1,5 +1,5 @@
 # I.DOT Plate Studio v3
-
+IA Primarily AI v1.0
 **Offline macOS-compatible plate-layout and randomized experimental-design tool with Assay Studio 2.3.x CSV import/export.**
 
 Open `index.html` in Safari, Firefox, or Chrome on a Mac. No Python, server, package installation, or online account is needed. Alternatively, use the standalone `dist/I.DOT_Plate_Studio_v3_for_Mac.html` distribution. The app **does not control the I.DOT hardware**.
@@ -86,4 +86,4 @@ git remote add origin https://github.com/YOUR_USERNAME/idot-plate-studio.git
 git push -u origin main
 ```
 
-**Not an official DISPENDIX/CYTENA product.** This project is MIT-licensed (see `LICENSE`).
+**Not an official DISPENDIX/CYTENA product.This work was primarily AI-generated** This project is MIT-licensed (see `LICENSE`).
