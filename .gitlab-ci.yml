@@ -7,6 +7,7 @@ test:
   image: node:22-alpine
   script:
     - node --test tests/*.test.js
+    - node scripts/build-standalone.js --check
 
 # Optional: explicitly launch this job to publish the static app to GitLab Pages.
 # Keep the repository and Pages access appropriately restricted for your lab.

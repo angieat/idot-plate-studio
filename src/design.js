@@ -57,7 +57,14 @@
     C.formatInfo(targetFormat); assert([96,384].includes(sourceFormat), 'Source plate format must be 96 or 384.');
     const doseMode = raw.doseMode || 'concentration';
     assert(['concentration', 'volume'].includes(doseMode), 'Dose mode must be concentration or volume.');
+    // Backwards compatibility: v2/v3 projects did not record a volume basis.
+    const volumeBasis = raw.volumeBasis || 'final';
+    assert(['final', 'starting'].includes(volumeBasis), 'Volume basis must be fixed final volume or fixed starting medium.');
     const finalVolume = positiveNumber(raw.finalVolume, 'Final volume');
+    const maxWellVolume = raw.maxWellVolume === undefined || raw.maxWellVolume === null || String(raw.maxWellVolume).trim() === ''
+      ? null : positiveNumber(raw.maxWellVolume, 'Maximum destination well volume');
+    const stockMicMultiple = raw.stockMicMultiple === undefined || raw.stockMicMultiple === null || String(raw.stockMicMultiple).trim() === ''
+      ? null : positiveNumber(raw.stockMicMultiple, 'Stock multiple of MIC');
     const unit = String(raw.unit || 'µM').trim();
     assert(/^[a-zA-Zµμ/%0-9 ._-]{1,24}$/.test(unit), 'Use a short concentration unit without punctuation or line breaks.');
     assert(Array.isArray(raw.compounds) && raw.compounds.length >= 1 && raw.compounds.length <= 12, 'Provide 1–12 compounds.');
@@ -67,7 +74,7 @@
       const stock = doseMode === 'concentration' ? positiveNumber(item.stock, name + ' stock concentration') : Number(item.stock) || 1;
       const levels = parseLevels(item.levels, name);
       if (doseMode === 'concentration') assert(levels.every(v => v <= stock), name + ': a target concentration exceeds its stock concentration.');
-      else assert(levels.every(v => v <= finalVolume), name + ': a dispense volume exceeds final volume.');
+      else if (volumeBasis === 'final') assert(levels.every(v => v <= finalVolume), name + ': a dispense volume exceeds final volume.');
       return { name, source, stock, levels };
     });
     assert(new Set(compounds.map(c => c.name.toLowerCase())).size === compounds.length, 'Compound names must be unique.');
@@ -89,13 +96,16 @@
     assert(minTransfer <= maxTransfer, 'The minimum transfer must be no larger than the maximum.');
     const sourceCapacity = positiveNumber(raw.sourceCapacity ?? 80, 'Source-well usable volume', true);
     const addDiluent = !!raw.addDiluent;
+    assert(volumeBasis !== 'starting' || !addDiluent,
+      'Fixed starting medium mode must not add a diluent top-up; uncheck Include top-up/diluent.');
     const diluentSource = C.parseWell(raw.diluentSource || 'H12', sourceFormat).name;
     const diluentName = C.makeTask({ source: diluentSource, target: 'A1', volume: 1, liquid: raw.diluentName || 'Diluent' }, sourceFormat, targetFormat).liquid;
     if (addDiluent) {
       assert(!compounds.some(c => c.source === diluentSource), 'Diluent source well must differ from compound source wells.');
       assert(!compounds.some(c => c.name.toLowerCase() === diluentName.toLowerCase()), 'Diluent liquid name must differ from compound names.');
     }
-    return { mode, targetFormat, sourceFormat, doseMode, finalVolume, unit, compounds, reserved: reserved.sort(),
+    return { mode, targetFormat, sourceFormat, doseMode, volumeBasis, finalVolume,
+      maxWellVolume, stockMicMultiple, unit, compounds, reserved: reserved.sort(),
       subsetSize, uniqueCount, replicates, sampleCount, totalPossible, capacity,
       seed: String(raw.seed ?? '1701'), addDiluent, diluentSource, diluentName, minTransfer, maxTransfer, sourceCapacity };
   }
@@ -155,9 +165,28 @@
       doses.push(dose); volumes.push(volume);
     }
     const compoundTotal = volumes.reduce((a, b) => a + b, 0);
-    assert(compoundTotal <= config.finalVolume + 1e-9, 'Sum of compound volumes (' + C.numberText(compoundTotal) + ' µL) exceeds the final volume (' + config.finalVolume + ' µL). Reduce levels or use more concentrated stocks.');
-    const topUp = Math.max(0, config.finalVolume - compoundTotal);
-    return { doses, volumes, compoundTotal, topUp };
+    const startingMedium = config.volumeBasis === 'starting' ? config.finalVolume : 0;
+    if (config.volumeBasis === 'final') {
+      assert(compoundTotal <= config.finalVolume + 1e-9,
+        'Sum of compound volumes (' + C.numberText(compoundTotal) + ' µL) exceeds the final volume (' + config.finalVolume + ' µL). Reduce levels or use more concentrated stocks.');
+    }
+    // In starting-medium mode, the media is already present and MUST NOT be topped up.
+    const topUp = config.volumeBasis === 'starting' ? 0 : Math.max(0, config.finalVolume - compoundTotal);
+    const actualFinalVolume = startingMedium + compoundTotal + topUp;
+    if (config.maxWellVolume !== null) {
+      assert(actualFinalVolume <= config.maxWellVolume + 1e-9,
+        'Expected well volume (' + C.numberText(actualFinalVolume) + ' µL) exceeds the configured physical well limit (' +
+        C.numberText(config.maxWellVolume) + ' µL). Verify the target labware and headspace.');
+    }
+    // Calculated concentrations refer to the final mixture, not just starting media.
+    const actualDoses = config.doseMode === 'concentration'
+      ? config.compounds.map((c, i) => c.stock * volumes[i] / actualFinalVolume) : null;
+    const targetMicMultiples = config.doseMode === 'concentration' && config.stockMicMultiple !== null
+      ? config.compounds.map((c, i) => doses[i] * config.stockMicMultiple / c.stock) : null;
+    const actualMicMultiples = actualDoses && config.stockMicMultiple !== null
+      ? config.compounds.map((c, i) => actualDoses[i] * config.stockMicMultiple / c.stock) : null;
+    return { doses, volumes, compoundTotal, topUp, startingMedium, actualFinalVolume,
+      actualDoses, targetMicMultiples, actualMicMultiples };
   }
   function generateDesign(raw) {
     const config = normalizeConfig(raw), random = seededRandom(config.seed);
@@ -186,8 +215,11 @@
         }
         assignments.push({ plate: index + 1, well, combinationId: entry.id, replicate: entry.replicate,
           indices: entry.indices.slice(), doses: v.doses, volumes: v.volumes,
+          startingMedium: v.startingMedium, actualFinalVolume: v.actualFinalVolume,
+          actualDoses: v.actualDoses, targetMicMultiples: v.targetMicMultiples,
+          actualMicMultiples: v.actualMicMultiples,
           compoundTotal: v.compoundTotal, diluentVolume: config.addDiluent ? v.topUp : 0,
-          externalTopUp: config.addDiluent ? 0 : v.topUp, finalVolume: config.finalVolume });
+          externalTopUp: config.addDiluent ? 0 : v.topUp, finalVolume: v.actualFinalVolume });
       }
       const sourceTotals = C.totals(tasks).sources;
       if (config.sourceCapacity > 0) for (const [source, dispensed] of Object.entries(sourceTotals)) {
@@ -196,7 +228,14 @@
       }
       plates.push({ number: index + 1, assignments, tasks, reserved: config.reserved.slice() });
     }
-    if (!config.addDiluent) warnings.push('The I.DOT tasks omit the per-well external top-up. Add the manifest’s external_top_up_uL with a separate validated step to reach final volume and intended concentrations.');
+    if (config.volumeBasis === 'starting') {
+      warnings.push('Each well already contains ' + C.numberText(config.finalVolume) +
+        ' µL starting medium. No top-up is generated. Final well volumes and actual concentrations include all planned compound additions; confirm labware capacity and headspace.');
+    } else if (!config.addDiluent) {
+      warnings.push('The I.DOT tasks omit the per-well external top-up. Add the manifest’s external_top_up_uL with a separate validated step to reach final volume and intended concentrations.');
+    }
+    if (config.volumeBasis === 'starting' && config.doseMode === 'concentration')
+      warnings.push('Target concentrations are nominal relative to the starting medium; actual concentrations are lower after pooled compound additions.');
     if (config.sourceCapacity > 0) warnings.push('Source consumption checks exclude dead volume, priming, and extra instrument requirements.');
     return { version: 1, config, plates, warnings, summary: summarize(config, plates) };
   }
@@ -224,6 +263,11 @@
       heading.push(c.name + '_dose_' + (cfg.doseMode === 'concentration' ? cfg.unit : 'uL'));
       heading.push(c.name + '_dispense_uL');
     }
+    heading.push('volume_basis', 'starting_media_uL', 'actual_final_volume_uL');
+    for (const c of cfg.compounds) {
+      heading.push(c.name + '_actual_concentration_' + cfg.unit,
+        c.name + '_target_MIC_multiple', c.name + '_actual_MIC_multiple');
+    }
     const rows = [heading];
     for (const plate of plan.plates) {
       for (const a of plate.assignments.slice().sort((x, y) => {
@@ -233,9 +277,21 @@
         const row = [a.plate, a.well, 'assigned', a.combinationId, a.replicate, C.numberText(a.finalVolume),
           C.numberText(a.compoundTotal), C.numberText(a.diluentVolume), C.numberText(a.externalTopUp)];
         for (let i = 0; i < cfg.compounds.length; i++) row.push(C.numberText(a.doses[i]), C.numberText(a.volumes[i]));
+        row.push(cfg.volumeBasis, C.numberText(a.startingMedium), C.numberText(a.actualFinalVolume));
+        for (let i = 0; i < cfg.compounds.length; i++) {
+          row.push(a.actualDoses ? C.numberText(a.actualDoses[i]) : '',
+            a.targetMicMultiples ? C.numberText(a.targetMicMultiples[i]) : '',
+            a.actualMicMultiples ? C.numberText(a.actualMicMultiples[i]) : '');
+        }
         rows.push(row);
       }
-      for (const well of plate.reserved) rows.push([plate.number, well, 'reserved', '', '', '', '', '', '', ...cfg.compounds.flatMap(() => ['', ''])]);
+      for (const well of plate.reserved) {
+        rows.push([plate.number, well, 'reserved', '', '', '', '', '', '',
+          ...cfg.compounds.flatMap(() => ['', '']),
+          cfg.volumeBasis, cfg.volumeBasis === 'starting' ? C.numberText(cfg.finalVolume) : '',
+          cfg.volumeBasis === 'starting' ? C.numberText(cfg.finalVolume) : '',
+          ...cfg.compounds.flatMap(() => ['', '', ''])]);
+      }
     }
     return C.csvRows(rows);
   }
@@ -251,7 +307,8 @@
     return C.csvRows(rows);
   }
   function defaultConfig() {
-    return { mode: 'subset', targetFormat: 96, sourceFormat: 96, doseMode: 'concentration', finalVolume: 20, unit: 'µM',
+    return { mode: 'subset', targetFormat: 96, sourceFormat: 96, doseMode: 'concentration',
+      volumeBasis: 'final', finalVolume: 20, maxWellVolume: null, stockMicMultiple: null, unit: 'µM',
       compounds: Array.from({length:6}, (_,i)=>({ name:'Compound_'+String.fromCharCode(65+i), source:'A'+(i+1), stock:1000, levels:[0,1,5] })),
       reserved: '', subsetSize: 96, uniqueCount: 24, replicates: 3, seed: '1701',
       addDiluent: false, diluentSource: 'H12', diluentName: 'Diluent', minTransfer: 0.008, maxTransfer: 30, sourceCapacity: 80 };

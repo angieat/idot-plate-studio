@@ -11,3 +11,4 @@ jobs:
         with:
           node-version: '22'
       - run: node --test tests/*.test.js
+      - run: node scripts/build-standalone.js --check

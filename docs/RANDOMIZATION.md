@@ -23,10 +23,13 @@ Selects a unique balanced subset, repeats each condition `replicates` times, the
 ## Final volume and dosing
 
 - **Final concentration mode:** `volume_uL = target / stock × final_assay_volume_uL`, with matching stock/target units.
+- **Fixed starting medium mode (new in v3.1):** `volume_uL = nominal_target / stock × starting_medium_uL`; the medium is already in the well. For all drugs added to a well, `actual_final_volume_uL = starting_medium_uL + sum(compound_dispense_uL)`, and each drug's `actual_concentration = stock_concentration × its_dispense_uL / actual_final_volume_uL`. No top-up tasks or external top-up are produced.
+- **MIC multiple reporting (optional):** if all compounds' stocks are the same configured multiple `S` of their MIC, then `actual_MIC_multiple = S × compound_dispense_uL / actual_final_volume_uL`. Enter `1000` only if every stock really is 1,000× its respective MIC. Otherwise leave the field blank; no MIC multiples are inferred.
 - **Direct volume mode:** entered dose levels are dispense volumes in µL. Concentrations are not inferred.
 - **Zero levels:** no compound dispense task is added; a zero-dose control still receives a row in the manifest.
 - **Fixed final volume:** `external_top_up_uL = final_assay_volume_uL − sum(compound_dispense_uL)` by default. *External top-up does not appear as an I.DOT dispense task.*
 - **Optional internal diluent:** if enabled, add a diluent transfer from a separate source well for the calculated remaining volume. The usable source volume and per-transfer limits are enforced on generated plans, but real device dead-volume, priming, and model-specific limits still need verification.
+- **Starting-medium capacity:** the optional physical well capacity check includes starting medium **plus all** additions. If left empty, no physical headspace guarantee is made.
 - **Source consumable limit:** the configured check is per source well, **per plate**, and counts requested dispensing volume only. It is not an instrument priming/fill-volume simulation.
 
 ## Experiment integrity

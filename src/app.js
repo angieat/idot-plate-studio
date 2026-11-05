@@ -136,10 +136,15 @@
       if (assignment) {
         const entry = document.createElement('div'); entry.className = 'design-warning';
         entry.textContent = 'Combination #' + assignment.combinationId + ', replicate ' + assignment.replicate +
-          ' · external top-up ' + humanNumber(assignment.externalTopUp) + ' µL'; root.appendChild(entry);
+          (state.plan.config.volumeBasis === 'starting'
+            ? ' · prefilled medium ' + humanNumber(assignment.startingMedium) + ' µL' +
+              ' · total after additions ' + humanNumber(assignment.actualFinalVolume) + ' µL'
+            : ' · external top-up ' + humanNumber(assignment.externalTopUp) + ' µL');
+        root.appendChild(entry);
         const details = document.createElement('div'); details.className = 'muted';
-        details.textContent = state.plan.config.compounds.map((c,i)=>c.name + ': ' + C.numberText(assignment.doses[i]) +
-          (state.plan.config.doseMode === 'concentration' ? ' ' + state.plan.config.unit : ' µL')).join(' · ');
+        details.textContent = state.plan.config.compounds.map((c,i)=> c.name + ': ' + C.numberText(assignment.doses[i]) +
+          (state.plan.config.doseMode === 'concentration' ? ' ' + state.plan.config.unit : ' µL') +
+          (assignment.actualMicMultiples ? ' → ' + C.numberText(assignment.actualMicMultiples[i]) + '× MIC actual' : '')).join(' · ');
         root.appendChild(details);
       } else if (state.plan && state.plan.plates[state.activePlate].reserved.includes(name)) {
         const details = document.createElement('div'); details.className = 'muted'; details.textContent = 'Reserved well — no automated treatment assignment'; root.appendChild(details);
@@ -318,6 +323,14 @@
       instrumentSettings: readInstrumentSettings(), activePlate: state.activePlate };
     download(slug(state.name) + '.json', JSON.stringify(data, null, 2) + '\n', 'application/json;charset=utf-8');
   }
+  function savedFieldsMatch(saved, generated) {
+    if (Array.isArray(saved)) return Array.isArray(generated) && saved.length === generated.length &&
+      saved.every((item, i) => savedFieldsMatch(item, generated[i]));
+    if (saved !== null && typeof saved === 'object') return generated !== null && typeof generated === 'object' &&
+      Object.keys(saved).every(key => Object.prototype.hasOwnProperty.call(generated, key) &&
+        savedFieldsMatch(saved[key], generated[key]));
+    return Object.is(saved, generated);
+  }
   function loadProject(text) {
     const project = JSON.parse(text);
     if (!project || ![1,2,3].includes(project.formatVersion) || !Array.isArray(project.tasks)) throw new Error('Not a Plate Studio project JSON file');
@@ -332,7 +345,9 @@
     state.plan = null; state.importedPlates = null; state.activePlate = 0;
     if (project.formatVersion >= 2 && project.plan) {
       const regenerated = D.generateDesign(project.plan.config);
-      if (JSON.stringify(regenerated.plates) !== JSON.stringify(project.plan.plates)) {
+      // Older v3 JSON lacks the new v3.1 derived concentration fields. Compare all saved
+      // properties recursively against regenerated values to keep legacy projects loadable.
+      if (!savedFieldsMatch(project.plan.plates, regenerated.plates)) {
         throw new Error('Saved design differs from deterministic regeneration. Project cannot be opened safely.');
       }
       state.plan = regenerated;
@@ -394,8 +409,10 @@
     }));
     return {
       mode: $('design-mode').value, doseMode: $('design-dose-mode').value,
+      volumeBasis: $('design-volume-basis').value,
       targetFormat: state.targetFormat, sourceFormat: state.sourceFormat,
       finalVolume: $('design-final-volume').value, unit: $('design-unit').value,
+      maxWellVolume: state.capacity, stockMicMultiple: $('design-stock-mic-multiple').value,
       seed: $('design-seed').value, reserved: $('design-reserved').value,
       subsetSize: $('design-subset-size').value, uniqueCount: $('design-unique-size').value,
       replicates: $('design-replicates').value, compounds,
@@ -407,7 +424,9 @@
   function writeDesignForm(config) {
     const mapping = {
       'design-mode': config.mode, 'design-dose-mode': config.doseMode,
+      'design-volume-basis': config.volumeBasis || 'final',
       'design-final-volume': config.finalVolume, 'design-unit': config.unit,
+      'design-stock-mic-multiple': config.stockMicMultiple ?? '',
       'design-seed': config.seed, 'design-reserved': Array.isArray(config.reserved) ? config.reserved.join(',') : config.reserved,
       'design-subset-size': config.subsetSize, 'design-unique-size': config.uniqueCount,
       'design-replicates': config.replicates, 'design-diluent-source': config.diluentSource,
@@ -416,7 +435,7 @@
     };
     for (const [id,value] of Object.entries(mapping)) $(id).value = value;
     $('design-add-diluent').checked = !!config.addDiluent;
-    renderCompoundRows(config.compounds); updateDesignMode(); updateDoseLabels();
+    renderCompoundRows(config.compounds); updateDesignMode(); updateDoseLabels(); updateVolumeMode();
   }
   function updateDesignMode() {
     const mode = $('design-mode').value;
@@ -429,6 +448,19 @@
     stockHead.textContent = concentration ? 'Stock concentration (same unit)' : 'Stock (not used in volume mode)';
     levelsHead.textContent = concentration ? 'Target concentrations, comma-separated' : 'Dispense volumes (µL), comma-separated';
     $('design-unit').disabled = !concentration;
+    $('design-stock-mic-multiple').disabled = !concentration;
+  }
+  function updateVolumeMode() {
+    const starting = $('design-volume-basis').value === 'starting';
+    $('design-volume-label').textContent = starting ? 'Starting medium already in each well (µL)' : 'Final assay volume (µL)';
+    $('design-dose-mode').options[0].textContent = starting
+      ? 'Nominal target concentration vs starting medium'
+      : 'Final concentration from stock';
+    $('design-add-diluent').disabled = starting;
+    if (starting) $('design-add-diluent').checked = false;
+    $('design-caution').textContent = starting
+      ? 'Fixed starting medium: every well already contains the specified medium volume. Antibiotics are added on top; no diluent is dispensed or requested. The manifest records final volume and dilution-adjusted concentrations per well. Confirm actual vessel capacity and headspace.'
+      : 'Fixed final volume: if top-up transfers are disabled, add the manifest’s external_top_up_uL separately to reach the selected final assay volume. Verify consumables and source volumes.';
   }
   function renderPlateNavigation() {
     const nav = $('plate-navigation'), plates = currentPlates();
@@ -540,8 +572,10 @@
         {name:'source_map.csv', content:D.sourceMapCsv(plan)},
         {name:'experiment_config.json', content:JSON.stringify({ name:state.name, ...plan.config,
           summary:plan.summary, warnings:plan.warnings },null,2)+'\n'},
-        {name:'README.txt', content:'I.DOT Plate Studio v3 randomized design\n\n' +
+        {name:'README.txt', content:'I.DOT Plate Studio v3.1 randomized design\n\n' +
           'The manifest includes reserved and all-zero-dose wells, even without programmed transfers.\n' +
+          'Volume basis: ' + (plan.config.volumeBasis === 'starting' ? 'fixed starting medium; no top-up required.' : 'fixed final volume; external top-up may be required.') + '\n' +
+          'The actual_final_volume_uL and per-compound actual-concentration fields describe the prepared mixture, assuming all required steps are performed.\n' +
           'If external_top_up_uL is nonzero, this volume is NOT dispensed by this protocol.\n' +
           'Verify liquid classes, source plate type, additional volume per source well, and instrument settings.\n' +
           'Instrument import is NOT confirmed until tested inside actual Assay Studio 2.3.x.\n'}
@@ -591,6 +625,7 @@
     $('target-format').addEventListener('change', ev => setFormats(ev.target.value, 'targetFormat'));
     $('design-mode').addEventListener('change', updateDesignMode);
     $('design-dose-mode').addEventListener('change', updateDoseLabels);
+    $('design-volume-basis').addEventListener('change', updateVolumeMode);
     $('generate-design').addEventListener('click', generateRandomized);
     $('clear-design').addEventListener('click', clearGeneratedDesign);
     $('active-plate').addEventListener('change', ev => { if (currentPlates()) activatePlate(Number(ev.target.value)); });
@@ -626,5 +661,5 @@
       } catch (err) { errorMessage(err); }
     });
   }
-  renderCompoundRows(D.defaultConfig().compounds); bind(); updateDesignMode(); updateDoseLabels(); render();
+  renderCompoundRows(D.defaultConfig().compounds); bind(); updateDesignMode(); updateDoseLabels(); updateVolumeMode(); render();
 })();

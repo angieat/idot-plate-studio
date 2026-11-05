@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>I.DOT Plate Studio v3 — Assay Studio 2.3 CSV Planner</title>
+  <title>I.DOT Plate Studio v3.1 — Assay Studio 2.3 CSV Planner</title>
   <link rel="stylesheet" href="src/styles.css">
   <script defer src="src/core.js"></script>
   <script defer src="src/idot_v23.js"></script>
@@ -15,13 +15,13 @@
 <body>
   <header class="masthead">
     <div class="masthead-inner">
-      <div class="identity"><span class="mark">ID</span><div><strong>I.DOT Plate Studio v3</strong><small>MAC-COMPATIBLE · OFFLINE CSV DESIGNER</small></div></div>
+      <div class="identity"><span class="mark">ID</span><div><strong>I.DOT Plate Studio v3.1</strong><small>MAC-COMPATIBLE · OFFLINE CSV DESIGNER</small></div></div>
       <div class="masthead-actions"><span class="pill">Unofficial research tool</span><button class="button ghost" id="load-demo" type="button">Load example</button></div>
     </div>
   </header>
   <main class="shell">
     <div class="intro"><div><h1>Design and randomize I.DOT plate experiments on your Mac.</h1><p>Assign compound-dose combinations across plates, calculate stock-to-target volumes, and export complete 16-column Assay Studio 2.3.x candidate protocols, including multiple target plates in one CSV.</p></div><div class="intro-count" aria-live="polite"><b id="step-count">0</b><span>dispensing steps</span></div></div>
-    <div class="info-strip" role="note"><strong>Instrument import:</strong> Import a genuine Assay Studio 2.3.x protocol CSV (like the supplied 384- or 1536-well examples). v3 preserves its five-line setup, all 16 dispensing columns, instrument settings, and L.100 source metadata. Generated files still require verification in Assay Studio. Do not run an unverified protocol.</div>
+    <div class="info-strip" role="note"><strong>Instrument import:</strong> Import a genuine Assay Studio 2.3.x protocol CSV (like the supplied 384- or 1536-well examples). v3.1 preserves its five-line setup, all 16 dispensing columns, instrument settings, and L.100 source metadata. Generated files still require verification in Assay Studio. Do not run an unverified protocol.</div>
     <div id="alert" class="alert" role="status" aria-live="polite" hidden></div>
     <section class="meta-panel panel" aria-labelledby="setup-title">
       <div class="section-title"><h2 id="setup-title">1 · Protocol setup</h2><span class="muted">Files stay on your computer.</span></div>
@@ -29,7 +29,7 @@
         <label>Protocol name <input id="protocol-name" value="My_I.DOT_Protocol" maxlength="120"></label>
         <label>Target format <select id="target-format"><option value="96">96-well · 8 × 12</option><option value="384">384-well · 16 × 24</option><option value="1536">1536-well · 32 × 48</option></select></label>
         <label>Source format <select id="source-format"><option value="96">96-well</option><option value="384">384-well</option></select></label>
-        <label>Optional target-well limit (µL) <input id="capacity" type="number" min="0" step="any" placeholder="No limit configured"></label>
+        <label>Optional physical well-volume limit, including media (µL) <input id="capacity" type="number" min="0" step="any" placeholder="No limit configured"></label>
       </div>
       <div class="design-table-head"><h3>Instrument CSV settings for new transfers</h3><p>Imported dispensing rows keep their existing metadata. For newly generated liquids, select a source plate type and valid I.DOT liquid class; never assume the sample liquid class is suitable for your compounds.</p></div>
       <div class="form-grid">
@@ -51,8 +51,10 @@
       <div class="design-grid">
         <label>Design mode<select id="design-mode"><option value="subset">Balanced randomized subset</option><option value="full">Full factorial · all combinations</option><option value="replicates">Randomized replicates of subset</option></select></label>
         <label>Dose interpretation<select id="design-dose-mode"><option value="concentration">Final concentration from stock</option><option value="volume">Direct dispense volume (µL)</option></select></label>
-        <label>Final assay volume (µL)<input id="design-final-volume" type="number" min="0.001" step="any" value="20"></label>
+        <label>Volume calculation mode<select id="design-volume-basis"><option value="final">Fixed final volume, with top-up</option><option value="starting">Fixed starting medium + antibiotic additions</option></select></label>
+        <label><span id="design-volume-label">Final assay volume (µL)</span><input id="design-final-volume" type="number" min="0.001" step="any" value="20"></label>
         <label>Concentration unit (stock and target)<input id="design-unit" value="µM" maxlength="24"></label>
+        <label>All stocks at × MIC (optional)<input id="design-stock-mic-multiple" type="number" min="0" step="any" placeholder="e.g. 1000"></label>
         <label>Random seed<input id="design-seed" value="1701" spellcheck="false"></label>
         <label>Reserved wells, every plate<input id="design-reserved" placeholder="e.g. H1:H12, A1" spellcheck="false"></label>
         <label class="mode-field" data-show-mode="subset">Unique conditions to sample<input id="design-subset-size" type="number" min="1" max="25000" step="1" value="96"></label>
@@ -69,7 +71,7 @@
         <label>Max transfer (µL)<input id="design-max-transfer" type="number" step="any" value="30"></label>
         <label>Source usable volume (µL, 0 = off)<input id="design-source-capacity" type="number" step="any" value="80"></label>
       </div>
-      <p class="micro design-caution">If top-up transfers are disabled, final concentrations assume you separately add the exact <strong>external_top_up_uL</strong> from the manifest. For a 20 µL assay this may be most of the volume; do not treat an unfilled well as a finished dilution. Check source-well capacity, consumables, and liquid classes for your I.DOT model.</p>
+      <p class="micro design-caution" id="design-caution">In fixed-final-volume mode, unchecked top-up means you must add the manifest's external_top_up_uL separately to reach the intended concentrations. Check source-well capacity, consumables, and liquid classes for your I.DOT model.</p>
       <div class="design-toolbar"><button id="generate-design" class="button primary" type="button">Generate randomized design</button><button id="clear-design" class="button ghost" type="button" disabled>Return to manual editor</button><span id="design-status" class="muted">No randomized design generated yet.</span></div>
       <div id="design-summary" class="design-summary" hidden></div>
     </section>

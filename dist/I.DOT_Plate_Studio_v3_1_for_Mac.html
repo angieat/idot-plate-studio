@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>I.DOT Plate Studio v3 — Assay Studio 2.3 CSV Planner</title>
+  <title>I.DOT Plate Studio v3.1 — Assay Studio 2.3 CSV Planner</title>
   <style>
 :root{--ink:#25253b;--sub:#6f6d82;--line:#e8e5f0;--fog:#f7f6fb;--purple:#7514e0;--pink:#e775ec;--dark:#211a3d;--focus:#b48af0;--good:#247c65;--bad:#a63f55;--shadow:0 10px 30px rgba(36,20,72,.04);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;color:var(--ink);background:#fbfafc;font-synthesis:none}
 *{box-sizing:border-box} body{margin:0;min-width:360px} button,input,select{font:inherit} button{cursor:pointer} button:disabled{opacity:.48;cursor:not-allowed} a{color:var(--purple)} button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,.well:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
@@ -28,13 +28,13 @@
 <body>
   <header class="masthead">
     <div class="masthead-inner">
-      <div class="identity"><span class="mark">ID</span><div><strong>I.DOT Plate Studio v3</strong><small>MAC-COMPATIBLE · OFFLINE CSV DESIGNER</small></div></div>
+      <div class="identity"><span class="mark">ID</span><div><strong>I.DOT Plate Studio v3.1</strong><small>MAC-COMPATIBLE · OFFLINE CSV DESIGNER</small></div></div>
       <div class="masthead-actions"><span class="pill">Unofficial research tool</span><button class="button ghost" id="load-demo" type="button">Load example</button></div>
     </div>
   </header>
   <main class="shell">
     <div class="intro"><div><h1>Design and randomize I.DOT plate experiments on your Mac.</h1><p>Assign compound-dose combinations across plates, calculate stock-to-target volumes, and export complete 16-column Assay Studio 2.3.x candidate protocols, including multiple target plates in one CSV.</p></div><div class="intro-count" aria-live="polite"><b id="step-count">0</b><span>dispensing steps</span></div></div>
-    <div class="info-strip" role="note"><strong>Instrument import:</strong> Import a genuine Assay Studio 2.3.x protocol CSV (like the supplied 384- or 1536-well examples). v3 preserves its five-line setup, all 16 dispensing columns, instrument settings, and L.100 source metadata. Generated files still require verification in Assay Studio. Do not run an unverified protocol.</div>
+    <div class="info-strip" role="note"><strong>Instrument import:</strong> Import a genuine Assay Studio 2.3.x protocol CSV (like the supplied 384- or 1536-well examples). v3.1 preserves its five-line setup, all 16 dispensing columns, instrument settings, and L.100 source metadata. Generated files still require verification in Assay Studio. Do not run an unverified protocol.</div>
     <div id="alert" class="alert" role="status" aria-live="polite" hidden></div>
     <section class="meta-panel panel" aria-labelledby="setup-title">
       <div class="section-title"><h2 id="setup-title">1 · Protocol setup</h2><span class="muted">Files stay on your computer.</span></div>
@@ -42,7 +42,7 @@
         <label>Protocol name <input id="protocol-name" value="My_I.DOT_Protocol" maxlength="120"></label>
         <label>Target format <select id="target-format"><option value="96">96-well · 8 × 12</option><option value="384">384-well · 16 × 24</option><option value="1536">1536-well · 32 × 48</option></select></label>
         <label>Source format <select id="source-format"><option value="96">96-well</option><option value="384">384-well</option></select></label>
-        <label>Optional target-well limit (µL) <input id="capacity" type="number" min="0" step="any" placeholder="No limit configured"></label>
+        <label>Optional physical well-volume limit, including media (µL) <input id="capacity" type="number" min="0" step="any" placeholder="No limit configured"></label>
       </div>
       <div class="design-table-head"><h3>Instrument CSV settings for new transfers</h3><p>Imported dispensing rows keep their existing metadata. For newly generated liquids, select a source plate type and valid I.DOT liquid class; never assume the sample liquid class is suitable for your compounds.</p></div>
       <div class="form-grid">
@@ -64,8 +64,10 @@
       <div class="design-grid">
         <label>Design mode<select id="design-mode"><option value="subset">Balanced randomized subset</option><option value="full">Full factorial · all combinations</option><option value="replicates">Randomized replicates of subset</option></select></label>
         <label>Dose interpretation<select id="design-dose-mode"><option value="concentration">Final concentration from stock</option><option value="volume">Direct dispense volume (µL)</option></select></label>
-        <label>Final assay volume (µL)<input id="design-final-volume" type="number" min="0.001" step="any" value="20"></label>
+        <label>Volume calculation mode<select id="design-volume-basis"><option value="final">Fixed final volume, with top-up</option><option value="starting">Fixed starting medium + antibiotic additions</option></select></label>
+        <label><span id="design-volume-label">Final assay volume (µL)</span><input id="design-final-volume" type="number" min="0.001" step="any" value="20"></label>
         <label>Concentration unit (stock and target)<input id="design-unit" value="µM" maxlength="24"></label>
+        <label>All stocks at × MIC (optional)<input id="design-stock-mic-multiple" type="number" min="0" step="any" placeholder="e.g. 1000"></label>
         <label>Random seed<input id="design-seed" value="1701" spellcheck="false"></label>
         <label>Reserved wells, every plate<input id="design-reserved" placeholder="e.g. H1:H12, A1" spellcheck="false"></label>
         <label class="mode-field" data-show-mode="subset">Unique conditions to sample<input id="design-subset-size" type="number" min="1" max="25000" step="1" value="96"></label>
@@ -82,7 +84,7 @@
         <label>Max transfer (µL)<input id="design-max-transfer" type="number" step="any" value="30"></label>
         <label>Source usable volume (µL, 0 = off)<input id="design-source-capacity" type="number" step="any" value="80"></label>
       </div>
-      <p class="micro design-caution">If top-up transfers are disabled, final concentrations assume you separately add the exact <strong>external_top_up_uL</strong> from the manifest. For a 20 µL assay this may be most of the volume; do not treat an unfilled well as a finished dilution. Check source-well capacity, consumables, and liquid classes for your I.DOT model.</p>
+      <p class="micro design-caution" id="design-caution">In fixed-final-volume mode, unchecked top-up means you must add the manifest's external_top_up_uL separately to reach the intended concentrations. Check source-well capacity, consumables, and liquid classes for your I.DOT model.</p>
       <div class="design-toolbar"><button id="generate-design" class="button primary" type="button">Generate randomized design</button><button id="clear-design" class="button ghost" type="button" disabled>Return to manual editor</button><span id="design-status" class="muted">No randomized design generated yet.</span></div>
       <div id="design-summary" class="design-summary" hidden></div>
     </section>
@@ -588,7 +590,14 @@
     C.formatInfo(targetFormat); assert([96,384].includes(sourceFormat), 'Source plate format must be 96 or 384.');
     const doseMode = raw.doseMode || 'concentration';
     assert(['concentration', 'volume'].includes(doseMode), 'Dose mode must be concentration or volume.');
+    // Backwards compatibility: v2/v3 projects did not record a volume basis.
+    const volumeBasis = raw.volumeBasis || 'final';
+    assert(['final', 'starting'].includes(volumeBasis), 'Volume basis must be fixed final volume or fixed starting medium.');
     const finalVolume = positiveNumber(raw.finalVolume, 'Final volume');
+    const maxWellVolume = raw.maxWellVolume === undefined || raw.maxWellVolume === null || String(raw.maxWellVolume).trim() === ''
+      ? null : positiveNumber(raw.maxWellVolume, 'Maximum destination well volume');
+    const stockMicMultiple = raw.stockMicMultiple === undefined || raw.stockMicMultiple === null || String(raw.stockMicMultiple).trim() === ''
+      ? null : positiveNumber(raw.stockMicMultiple, 'Stock multiple of MIC');
     const unit = String(raw.unit || 'µM').trim();
     assert(/^[a-zA-Zµμ/%0-9 ._-]{1,24}$/.test(unit), 'Use a short concentration unit without punctuation or line breaks.');
     assert(Array.isArray(raw.compounds) && raw.compounds.length >= 1 && raw.compounds.length <= 12, 'Provide 1–12 compounds.');
@@ -598,7 +607,7 @@
       const stock = doseMode === 'concentration' ? positiveNumber(item.stock, name + ' stock concentration') : Number(item.stock) || 1;
       const levels = parseLevels(item.levels, name);
       if (doseMode === 'concentration') assert(levels.every(v => v <= stock), name + ': a target concentration exceeds its stock concentration.');
-      else assert(levels.every(v => v <= finalVolume), name + ': a dispense volume exceeds final volume.');
+      else if (volumeBasis === 'final') assert(levels.every(v => v <= finalVolume), name + ': a dispense volume exceeds final volume.');
       return { name, source, stock, levels };
     });
     assert(new Set(compounds.map(c => c.name.toLowerCase())).size === compounds.length, 'Compound names must be unique.');
@@ -620,13 +629,16 @@
     assert(minTransfer <= maxTransfer, 'The minimum transfer must be no larger than the maximum.');
     const sourceCapacity = positiveNumber(raw.sourceCapacity ?? 80, 'Source-well usable volume', true);
     const addDiluent = !!raw.addDiluent;
+    assert(volumeBasis !== 'starting' || !addDiluent,
+      'Fixed starting medium mode must not add a diluent top-up; uncheck Include top-up/diluent.');
     const diluentSource = C.parseWell(raw.diluentSource || 'H12', sourceFormat).name;
     const diluentName = C.makeTask({ source: diluentSource, target: 'A1', volume: 1, liquid: raw.diluentName || 'Diluent' }, sourceFormat, targetFormat).liquid;
     if (addDiluent) {
       assert(!compounds.some(c => c.source === diluentSource), 'Diluent source well must differ from compound source wells.');
       assert(!compounds.some(c => c.name.toLowerCase() === diluentName.toLowerCase()), 'Diluent liquid name must differ from compound names.');
     }
-    return { mode, targetFormat, sourceFormat, doseMode, finalVolume, unit, compounds, reserved: reserved.sort(),
+    return { mode, targetFormat, sourceFormat, doseMode, volumeBasis, finalVolume,
+      maxWellVolume, stockMicMultiple, unit, compounds, reserved: reserved.sort(),
       subsetSize, uniqueCount, replicates, sampleCount, totalPossible, capacity,
       seed: String(raw.seed ?? '1701'), addDiluent, diluentSource, diluentName, minTransfer, maxTransfer, sourceCapacity };
   }
@@ -686,9 +698,28 @@
       doses.push(dose); volumes.push(volume);
     }
     const compoundTotal = volumes.reduce((a, b) => a + b, 0);
-    assert(compoundTotal <= config.finalVolume + 1e-9, 'Sum of compound volumes (' + C.numberText(compoundTotal) + ' µL) exceeds the final volume (' + config.finalVolume + ' µL). Reduce levels or use more concentrated stocks.');
-    const topUp = Math.max(0, config.finalVolume - compoundTotal);
-    return { doses, volumes, compoundTotal, topUp };
+    const startingMedium = config.volumeBasis === 'starting' ? config.finalVolume : 0;
+    if (config.volumeBasis === 'final') {
+      assert(compoundTotal <= config.finalVolume + 1e-9,
+        'Sum of compound volumes (' + C.numberText(compoundTotal) + ' µL) exceeds the final volume (' + config.finalVolume + ' µL). Reduce levels or use more concentrated stocks.');
+    }
+    // In starting-medium mode, the media is already present and MUST NOT be topped up.
+    const topUp = config.volumeBasis === 'starting' ? 0 : Math.max(0, config.finalVolume - compoundTotal);
+    const actualFinalVolume = startingMedium + compoundTotal + topUp;
+    if (config.maxWellVolume !== null) {
+      assert(actualFinalVolume <= config.maxWellVolume + 1e-9,
+        'Expected well volume (' + C.numberText(actualFinalVolume) + ' µL) exceeds the configured physical well limit (' +
+        C.numberText(config.maxWellVolume) + ' µL). Verify the target labware and headspace.');
+    }
+    // Calculated concentrations refer to the final mixture, not just starting media.
+    const actualDoses = config.doseMode === 'concentration'
+      ? config.compounds.map((c, i) => c.stock * volumes[i] / actualFinalVolume) : null;
+    const targetMicMultiples = config.doseMode === 'concentration' && config.stockMicMultiple !== null
+      ? config.compounds.map((c, i) => doses[i] * config.stockMicMultiple / c.stock) : null;
+    const actualMicMultiples = actualDoses && config.stockMicMultiple !== null
+      ? config.compounds.map((c, i) => actualDoses[i] * config.stockMicMultiple / c.stock) : null;
+    return { doses, volumes, compoundTotal, topUp, startingMedium, actualFinalVolume,
+      actualDoses, targetMicMultiples, actualMicMultiples };
   }
   function generateDesign(raw) {
     const config = normalizeConfig(raw), random = seededRandom(config.seed);
@@ -717,8 +748,11 @@
         }
         assignments.push({ plate: index + 1, well, combinationId: entry.id, replicate: entry.replicate,
           indices: entry.indices.slice(), doses: v.doses, volumes: v.volumes,
+          startingMedium: v.startingMedium, actualFinalVolume: v.actualFinalVolume,
+          actualDoses: v.actualDoses, targetMicMultiples: v.targetMicMultiples,
+          actualMicMultiples: v.actualMicMultiples,
           compoundTotal: v.compoundTotal, diluentVolume: config.addDiluent ? v.topUp : 0,
-          externalTopUp: config.addDiluent ? 0 : v.topUp, finalVolume: config.finalVolume });
+          externalTopUp: config.addDiluent ? 0 : v.topUp, finalVolume: v.actualFinalVolume });
       }
       const sourceTotals = C.totals(tasks).sources;
       if (config.sourceCapacity > 0) for (const [source, dispensed] of Object.entries(sourceTotals)) {
@@ -727,7 +761,14 @@
       }
       plates.push({ number: index + 1, assignments, tasks, reserved: config.reserved.slice() });
     }
-    if (!config.addDiluent) warnings.push('The I.DOT tasks omit the per-well external top-up. Add the manifest’s external_top_up_uL with a separate validated step to reach final volume and intended concentrations.');
+    if (config.volumeBasis === 'starting') {
+      warnings.push('Each well already contains ' + C.numberText(config.finalVolume) +
+        ' µL starting medium. No top-up is generated. Final well volumes and actual concentrations include all planned compound additions; confirm labware capacity and headspace.');
+    } else if (!config.addDiluent) {
+      warnings.push('The I.DOT tasks omit the per-well external top-up. Add the manifest’s external_top_up_uL with a separate validated step to reach final volume and intended concentrations.');
+    }
+    if (config.volumeBasis === 'starting' && config.doseMode === 'concentration')
+      warnings.push('Target concentrations are nominal relative to the starting medium; actual concentrations are lower after pooled compound additions.');
     if (config.sourceCapacity > 0) warnings.push('Source consumption checks exclude dead volume, priming, and extra instrument requirements.');
     return { version: 1, config, plates, warnings, summary: summarize(config, plates) };
   }
@@ -755,6 +796,11 @@
       heading.push(c.name + '_dose_' + (cfg.doseMode === 'concentration' ? cfg.unit : 'uL'));
       heading.push(c.name + '_dispense_uL');
     }
+    heading.push('volume_basis', 'starting_media_uL', 'actual_final_volume_uL');
+    for (const c of cfg.compounds) {
+      heading.push(c.name + '_actual_concentration_' + cfg.unit,
+        c.name + '_target_MIC_multiple', c.name + '_actual_MIC_multiple');
+    }
     const rows = [heading];
     for (const plate of plan.plates) {
       for (const a of plate.assignments.slice().sort((x, y) => {
@@ -764,9 +810,21 @@
         const row = [a.plate, a.well, 'assigned', a.combinationId, a.replicate, C.numberText(a.finalVolume),
           C.numberText(a.compoundTotal), C.numberText(a.diluentVolume), C.numberText(a.externalTopUp)];
         for (let i = 0; i < cfg.compounds.length; i++) row.push(C.numberText(a.doses[i]), C.numberText(a.volumes[i]));
+        row.push(cfg.volumeBasis, C.numberText(a.startingMedium), C.numberText(a.actualFinalVolume));
+        for (let i = 0; i < cfg.compounds.length; i++) {
+          row.push(a.actualDoses ? C.numberText(a.actualDoses[i]) : '',
+            a.targetMicMultiples ? C.numberText(a.targetMicMultiples[i]) : '',
+            a.actualMicMultiples ? C.numberText(a.actualMicMultiples[i]) : '');
+        }
         rows.push(row);
       }
-      for (const well of plate.reserved) rows.push([plate.number, well, 'reserved', '', '', '', '', '', '', ...cfg.compounds.flatMap(() => ['', ''])]);
+      for (const well of plate.reserved) {
+        rows.push([plate.number, well, 'reserved', '', '', '', '', '', '',
+          ...cfg.compounds.flatMap(() => ['', '']),
+          cfg.volumeBasis, cfg.volumeBasis === 'starting' ? C.numberText(cfg.finalVolume) : '',
+          cfg.volumeBasis === 'starting' ? C.numberText(cfg.finalVolume) : '',
+          ...cfg.compounds.flatMap(() => ['', '', ''])]);
+      }
     }
     return C.csvRows(rows);
   }
@@ -782,7 +840,8 @@
     return C.csvRows(rows);
   }
   function defaultConfig() {
-    return { mode: 'subset', targetFormat: 96, sourceFormat: 96, doseMode: 'concentration', finalVolume: 20, unit: 'µM',
+    return { mode: 'subset', targetFormat: 96, sourceFormat: 96, doseMode: 'concentration',
+      volumeBasis: 'final', finalVolume: 20, maxWellVolume: null, stockMicMultiple: null, unit: 'µM',
       compounds: Array.from({length:6}, (_,i)=>({ name:'Compound_'+String.fromCharCode(65+i), source:'A'+(i+1), stock:1000, levels:[0,1,5] })),
       reserved: '', subsetSize: 96, uniqueCount: 24, replicates: 3, seed: '1701',
       addDiluent: false, diluentSource: 'H12', diluentName: 'Diluent', minTransfer: 0.008, maxTransfer: 30, sourceCapacity: 80 };
@@ -983,10 +1042,15 @@
       if (assignment) {
         const entry = document.createElement('div'); entry.className = 'design-warning';
         entry.textContent = 'Combination #' + assignment.combinationId + ', replicate ' + assignment.replicate +
-          ' · external top-up ' + humanNumber(assignment.externalTopUp) + ' µL'; root.appendChild(entry);
+          (state.plan.config.volumeBasis === 'starting'
+            ? ' · prefilled medium ' + humanNumber(assignment.startingMedium) + ' µL' +
+              ' · total after additions ' + humanNumber(assignment.actualFinalVolume) + ' µL'
+            : ' · external top-up ' + humanNumber(assignment.externalTopUp) + ' µL');
+        root.appendChild(entry);
         const details = document.createElement('div'); details.className = 'muted';
-        details.textContent = state.plan.config.compounds.map((c,i)=>c.name + ': ' + C.numberText(assignment.doses[i]) +
-          (state.plan.config.doseMode === 'concentration' ? ' ' + state.plan.config.unit : ' µL')).join(' · ');
+        details.textContent = state.plan.config.compounds.map((c,i)=> c.name + ': ' + C.numberText(assignment.doses[i]) +
+          (state.plan.config.doseMode === 'concentration' ? ' ' + state.plan.config.unit : ' µL') +
+          (assignment.actualMicMultiples ? ' → ' + C.numberText(assignment.actualMicMultiples[i]) + '× MIC actual' : '')).join(' · ');
         root.appendChild(details);
       } else if (state.plan && state.plan.plates[state.activePlate].reserved.includes(name)) {
         const details = document.createElement('div'); details.className = 'muted'; details.textContent = 'Reserved well — no automated treatment assignment'; root.appendChild(details);
@@ -1165,6 +1229,14 @@
       instrumentSettings: readInstrumentSettings(), activePlate: state.activePlate };
     download(slug(state.name) + '.json', JSON.stringify(data, null, 2) + '\n', 'application/json;charset=utf-8');
   }
+  function savedFieldsMatch(saved, generated) {
+    if (Array.isArray(saved)) return Array.isArray(generated) && saved.length === generated.length &&
+      saved.every((item, i) => savedFieldsMatch(item, generated[i]));
+    if (saved !== null && typeof saved === 'object') return generated !== null && typeof generated === 'object' &&
+      Object.keys(saved).every(key => Object.prototype.hasOwnProperty.call(generated, key) &&
+        savedFieldsMatch(saved[key], generated[key]));
+    return Object.is(saved, generated);
+  }
   function loadProject(text) {
     const project = JSON.parse(text);
     if (!project || ![1,2,3].includes(project.formatVersion) || !Array.isArray(project.tasks)) throw new Error('Not a Plate Studio project JSON file');
@@ -1179,7 +1251,9 @@
     state.plan = null; state.importedPlates = null; state.activePlate = 0;
     if (project.formatVersion >= 2 && project.plan) {
       const regenerated = D.generateDesign(project.plan.config);
-      if (JSON.stringify(regenerated.plates) !== JSON.stringify(project.plan.plates)) {
+      // Older v3 JSON lacks the new v3.1 derived concentration fields. Compare all saved
+      // properties recursively against regenerated values to keep legacy projects loadable.
+      if (!savedFieldsMatch(project.plan.plates, regenerated.plates)) {
         throw new Error('Saved design differs from deterministic regeneration. Project cannot be opened safely.');
       }
       state.plan = regenerated;
@@ -1241,8 +1315,10 @@
     }));
     return {
       mode: $('design-mode').value, doseMode: $('design-dose-mode').value,
+      volumeBasis: $('design-volume-basis').value,
       targetFormat: state.targetFormat, sourceFormat: state.sourceFormat,
       finalVolume: $('design-final-volume').value, unit: $('design-unit').value,
+      maxWellVolume: state.capacity, stockMicMultiple: $('design-stock-mic-multiple').value,
       seed: $('design-seed').value, reserved: $('design-reserved').value,
       subsetSize: $('design-subset-size').value, uniqueCount: $('design-unique-size').value,
       replicates: $('design-replicates').value, compounds,
@@ -1254,7 +1330,9 @@
   function writeDesignForm(config) {
     const mapping = {
       'design-mode': config.mode, 'design-dose-mode': config.doseMode,
+      'design-volume-basis': config.volumeBasis || 'final',
       'design-final-volume': config.finalVolume, 'design-unit': config.unit,
+      'design-stock-mic-multiple': config.stockMicMultiple ?? '',
       'design-seed': config.seed, 'design-reserved': Array.isArray(config.reserved) ? config.reserved.join(',') : config.reserved,
       'design-subset-size': config.subsetSize, 'design-unique-size': config.uniqueCount,
       'design-replicates': config.replicates, 'design-diluent-source': config.diluentSource,
@@ -1263,7 +1341,7 @@
     };
     for (const [id,value] of Object.entries(mapping)) $(id).value = value;
     $('design-add-diluent').checked = !!config.addDiluent;
-    renderCompoundRows(config.compounds); updateDesignMode(); updateDoseLabels();
+    renderCompoundRows(config.compounds); updateDesignMode(); updateDoseLabels(); updateVolumeMode();
   }
   function updateDesignMode() {
     const mode = $('design-mode').value;
@@ -1276,6 +1354,19 @@
     stockHead.textContent = concentration ? 'Stock concentration (same unit)' : 'Stock (not used in volume mode)';
     levelsHead.textContent = concentration ? 'Target concentrations, comma-separated' : 'Dispense volumes (µL), comma-separated';
     $('design-unit').disabled = !concentration;
+    $('design-stock-mic-multiple').disabled = !concentration;
+  }
+  function updateVolumeMode() {
+    const starting = $('design-volume-basis').value === 'starting';
+    $('design-volume-label').textContent = starting ? 'Starting medium already in each well (µL)' : 'Final assay volume (µL)';
+    $('design-dose-mode').options[0].textContent = starting
+      ? 'Nominal target concentration vs starting medium'
+      : 'Final concentration from stock';
+    $('design-add-diluent').disabled = starting;
+    if (starting) $('design-add-diluent').checked = false;
+    $('design-caution').textContent = starting
+      ? 'Fixed starting medium: every well already contains the specified medium volume. Antibiotics are added on top; no diluent is dispensed or requested. The manifest records final volume and dilution-adjusted concentrations per well. Confirm actual vessel capacity and headspace.'
+      : 'Fixed final volume: if top-up transfers are disabled, add the manifest’s external_top_up_uL separately to reach the selected final assay volume. Verify consumables and source volumes.';
   }
   function renderPlateNavigation() {
     const nav = $('plate-navigation'), plates = currentPlates();
@@ -1387,8 +1478,10 @@
         {name:'source_map.csv', content:D.sourceMapCsv(plan)},
         {name:'experiment_config.json', content:JSON.stringify({ name:state.name, ...plan.config,
           summary:plan.summary, warnings:plan.warnings },null,2)+'\n'},
-        {name:'README.txt', content:'I.DOT Plate Studio v3 randomized design\n\n' +
+        {name:'README.txt', content:'I.DOT Plate Studio v3.1 randomized design\n\n' +
           'The manifest includes reserved and all-zero-dose wells, even without programmed transfers.\n' +
+          'Volume basis: ' + (plan.config.volumeBasis === 'starting' ? 'fixed starting medium; no top-up required.' : 'fixed final volume; external top-up may be required.') + '\n' +
+          'The actual_final_volume_uL and per-compound actual-concentration fields describe the prepared mixture, assuming all required steps are performed.\n' +
           'If external_top_up_uL is nonzero, this volume is NOT dispensed by this protocol.\n' +
           'Verify liquid classes, source plate type, additional volume per source well, and instrument settings.\n' +
           'Instrument import is NOT confirmed until tested inside actual Assay Studio 2.3.x.\n'}
@@ -1438,6 +1531,7 @@
     $('target-format').addEventListener('change', ev => setFormats(ev.target.value, 'targetFormat'));
     $('design-mode').addEventListener('change', updateDesignMode);
     $('design-dose-mode').addEventListener('change', updateDoseLabels);
+    $('design-volume-basis').addEventListener('change', updateVolumeMode);
     $('generate-design').addEventListener('click', generateRandomized);
     $('clear-design').addEventListener('click', clearGeneratedDesign);
     $('active-plate').addEventListener('change', ev => { if (currentPlates()) activatePlate(Number(ev.target.value)); });
@@ -1473,7 +1567,7 @@
       } catch (err) { errorMessage(err); }
     });
   }
-  renderCompoundRows(D.defaultConfig().compounds); bind(); updateDesignMode(); updateDoseLabels(); render();
+  renderCompoundRows(D.defaultConfig().compounds); bind(); updateDesignMode(); updateDoseLabels(); updateVolumeMode(); render();
 })();
 
 </script>
