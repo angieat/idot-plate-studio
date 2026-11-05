@@ -1,0 +1,81 @@
+{
+  "mode": "subset",
+  "targetFormat": 96,
+  "sourceFormat": 96,
+  "doseMode": "concentration",
+  "finalVolume": 20,
+  "unit": "µM",
+  "compounds": [
+    {
+      "name": "Compound_A",
+      "source": "A1",
+      "stock": 1000,
+      "levels": [
+        0,
+        1,
+        5
+      ]
+    },
+    {
+      "name": "Compound_B",
+      "source": "A2",
+      "stock": 1000,
+      "levels": [
+        0,
+        1,
+        5
+      ]
+    },
+    {
+      "name": "Compound_C",
+      "source": "A3",
+      "stock": 1000,
+      "levels": [
+        0,
+        1,
+        5
+      ]
+    },
+    {
+      "name": "Compound_D",
+      "source": "A4",
+      "stock": 1000,
+      "levels": [
+        0,
+        1,
+        5
+      ]
+    },
+    {
+      "name": "Compound_E",
+      "source": "A5",
+      "stock": 1000,
+      "levels": [
+        0,
+        1,
+        5
+      ]
+    },
+    {
+      "name": "Compound_F",
+      "source": "A6",
+      "stock": 1000,
+      "levels": [
+        0,
+        1,
+        5
+      ]
+    }
+  ],
+  "reserved": "",
+  "subsetSize": 96,
+  "uniqueCount": 24,
+  "replicates": 3,
+  "seed": "1701",
+  "addDiluent": false,
+  "diluentSource": "H12",
+  "diluentName": "Diluent",
+  "minTransfer": 0.008,
+  "maxTransfer": 30,
+  "sourceCapacity": 80
+}

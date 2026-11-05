@@ -1,0 +1,25 @@
+stages:
+  - test
+  - deploy
+
+test:
+  stage: test
+  image: node:22-alpine
+  script:
+    - node --test tests/*.test.js
+
+# Optional: explicitly launch this job to publish the static app to GitLab Pages.
+# Keep the repository and Pages access appropriately restricted for your lab.
+pages:
+  stage: deploy
+  image: alpine:3.20
+  script:
+    - mkdir -p public
+    - cp index.html public/
+    - cp -R src public/src
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual

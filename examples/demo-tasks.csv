@@ -1,0 +1,9 @@
+Source Well,Target Well,Volume [µL],Liquid Name
+A1,A1,0.25,Example_A
+A1,A2,0.5,Example_A
+A1,A3,0.75,Example_A
+A1,A4,1,Example_A
+A2,A1,0.1,Example_B
+A2,A2,0.1,Example_B
+A2,A3,0.1,Example_B
+A2,A4,0.1,Example_B
