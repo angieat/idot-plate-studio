@@ -98,6 +98,7 @@
           const assignment = assignments.get(well);
           if (assignment) {
             const activeCount = assignment.doses.filter(d => d > 0).length;
+            if (assignment.role === 'control') button.classList.add('control');
             button.classList.add(activeCount === 0 ? 'assigned-zero' : 'generated');
             if (activeCount > 0) {
               const hues = [0, 205, 192, 165, 280, 325, 23];
@@ -106,7 +107,7 @@
             }
             const doses = state.plan.config.compounds.map((c,i)=> c.name + ': ' + C.numberText(assignment.doses[i])).join(' · ');
             button.title = well + ' · combination #' + assignment.combinationId + ' · replicate ' + assignment.replicate + ' · ' + doses;
-            button.setAttribute('aria-label', well + ' · assigned combination ' + assignment.combinationId);
+            button.setAttribute('aria-label', assignment.role === 'control' ? well + ', ' + assignment.controlType + ' control' : well + ' · assigned combination ' + assignment.combinationId);
           } else if (reserved.has(well)) {
             button.classList.add('reserved'); button.title = well + ' · reserved / no compound assignment';
             button.setAttribute('aria-label', well + ', reserved');
@@ -116,7 +117,7 @@
           if (state.selected.has(well)) button.classList.add('selected');
           button.setAttribute('aria-pressed', String(state.selected.has(well)));
         } else if ($('source-well').value.trim().toUpperCase() === well) button.classList.add('source-active');
-        button.title = well + (volume ? ' · ' + humanNumber(volume) + ' µL' : ' · empty');
+        if (!(assignments && assignments.has(well))) button.title = well + (volume ? ' · ' + humanNumber(volume) + ' µL' : ' · empty');
         fragment.appendChild(button);
       }
     }
@@ -135,7 +136,7 @@
       h.textContent = name + ' · ' + humanNumber(items.reduce((n, t) => n + t.volume, 0)) + ' µL'; root.appendChild(h);
       if (assignment) {
         const entry = document.createElement('div'); entry.className = 'design-warning';
-        entry.textContent = 'Combination #' + assignment.combinationId + ', replicate ' + assignment.replicate +
+        entry.textContent = (assignment.role === 'control' ? assignment.controlType + ' control' : 'Combination #' + assignment.combinationId) + ', replicate ' + assignment.replicate +
           (state.plan.config.volumeBasis === 'starting'
             ? ' · prefilled medium ' + humanNumber(assignment.startingMedium) + ' µL' +
               ' · total after additions ' + humanNumber(assignment.actualFinalVolume) + ' µL'
@@ -202,6 +203,8 @@
     renderMessages(warns, 'warn');
     $('export-list').disabled = !ready;
     $('export-manifest').disabled = !state.plan;
+    $('export-matrix').disabled = !state.plan;
+    $('export-responses').disabled = !state.plan;
     $('export-batch').disabled = !state.plan;
     $('export-protocol').disabled = !ready || !!validation.template.errors.length;
     const plateGroup = currentPlates();
@@ -217,7 +220,8 @@
     $('summary-targets').textContent = totals.targetCount.toLocaleString();
     $('summary-total').textContent = humanNumber(totals.total) + ' µL';
     $('target-count').textContent = state.plan ?
-      state.plan.plates[state.activePlate].assignments.length + ' assigned wells' +
+      state.plan.plates[state.activePlate].assignments.filter(a=>a.role!=='control').length + ' treatments · ' +
+      state.plan.plates[state.activePlate].assignments.filter(a=>a.role==='control').length + ' controls' +
         (state.plan.plates[state.activePlate].reserved.length ? ' · ' + state.plan.plates[state.activePlate].reserved.length + ' reserved' : '') :
       totals.targetCount + ' filled wells';
     $('source-count').textContent = totals.sourceCount + ' used wells';
@@ -228,7 +232,7 @@
     for (const id of ['source-well', 'dispense-volume', 'liquid-name', 'apply-mode', 'apply', 'remove-selected']) $(id).disabled = locked;
     $('clear-design').disabled = !locked;
     $('design-status').textContent = locked ? 'Generated · ' + state.plan.summary.plates + ' plate(s) · ' +
-      state.plan.summary.wells + ' assignments. Manual editor locked until design is cleared.' : 'No randomized design generated yet.';
+      state.plan.summary.wells + ' treatments + ' + state.plan.summary.controls + ' controls. Manual editor locked until design is cleared.' : 'No randomized design generated yet.';
     try {
       const preview = state.template && !validation.template.errors.length && !validation.tasks.errors.length
         ? V.exportProtocol(state.tasks, state.template, state.name, state.sourceFormat, state.targetFormat,
@@ -388,7 +392,7 @@
     const body = $('compound-rows'); body.replaceChildren();
     for (const item of compounds) {
       const tr = document.createElement('tr');
-      for (const [key, value] of [['name',item.name], ['source',item.source], ['stock',item.stock], ['levels',Array.isArray(item.levels) ? item.levels.join(', ') : item.levels]]) {
+      for (const [key, value] of [['name',item.name], ['source',item.source], ['stock',item.stock]]) {
         const td = document.createElement('td'), input = document.createElement('input');
         input.className = 'compound-' + key;
         input.setAttribute('aria-label', key + ' for ' + item.name);
@@ -397,15 +401,65 @@
         input.spellcheck = false;
         td.appendChild(input); tr.appendChild(td);
       }
-      body.appendChild(tr);
+      const schemeCell = document.createElement('td'), scheme = document.createElement('select');
+      scheme.className = 'compound-dose-scheme';
+      scheme.setAttribute('aria-label', 'Dose scheme for ' + item.name);
+      for (const [value, label] of [['manual','Manual levels'],['log','Log-spaced range']]) {
+        const opt = document.createElement('option'); opt.value = value; opt.textContent = label; scheme.appendChild(opt);
+      }
+      scheme.value = item.doseScheme || 'manual'; schemeCell.appendChild(scheme); tr.appendChild(schemeCell);
+      const doseCell = document.createElement('td'); doseCell.className = 'compound-doses';
+      const manual = document.createElement('input'); manual.className = 'compound-levels';
+      manual.setAttribute('aria-label', 'Comma-separated dose levels for ' + item.name);
+      manual.value = Array.isArray(item.levels) ? item.levels.join(', ') : item.levels;
+      manual.spellcheck = false; doseCell.appendChild(manual);
+      const fieldSet = document.createElement('div'); fieldSet.className = 'compound-log-fields';
+      const positives = (Array.isArray(item.levels) ? item.levels : String(item.levels).split(',').map(Number))
+        .filter(n => Number.isFinite(n) && n > 0);
+      const defaults = { min: positives.length ? Math.min(...positives) : '',
+        max: positives.length ? Math.max(...positives) : '', points: 3 };
+      for (const [key, title, val] of [['min','Min (> 0)',item.logMin ?? defaults.min],
+        ['max','Max (> min)',item.logMax ?? defaults.max],['points','Positive points',item.logPoints ?? defaults.points]]) {
+        const label = document.createElement('label'); label.textContent = title;
+        const input = document.createElement('input'); input.className = 'compound-log-' + key;
+        input.type = 'number'; input.step = key === 'points' ? '1' : 'any';
+        input.min = key === 'points' ? '2' : '0';
+        if (key === 'points') input.max = '4';
+        input.value = val; input.setAttribute('aria-label', title + ' for ' + item.name);
+        label.appendChild(input); fieldSet.appendChild(label);
+      }
+      const zeroLabel = document.createElement('label'); zeroLabel.className = 'compound-zero-label';
+      const zero = document.createElement('input'); zero.type = 'checkbox'; zero.className = 'compound-log-zero';
+      zero.checked = item.logIncludeZero !== false;
+      zeroLabel.append(zero, document.createTextNode('Include 0')); fieldSet.appendChild(zeroLabel);
+      doseCell.appendChild(fieldSet); tr.appendChild(doseCell); body.appendChild(tr);
+      updateCompoundDoseRow(tr);
     }
+  }
+  function updateCompoundDoseRow(tr) {
+    const isLog = tr.querySelector('.compound-dose-scheme').value === 'log';
+    const canLog = $('design-dose-mode').value === 'concentration';
+    const manual = tr.querySelector('.compound-levels');
+    const range = tr.querySelector('.compound-log-fields');
+    manual.hidden = isLog; manual.disabled = isLog;
+    range.hidden = !isLog;
+    range.querySelectorAll('input').forEach(input => { input.disabled = !isLog || !canLog; });
+    tr.querySelector('.compound-dose-scheme').querySelector('option[value="log"]').disabled = !canLog;
+  }
+  function updateCompoundDoseRows() {
+    for (const tr of $('compound-rows').querySelectorAll('tr')) updateCompoundDoseRow(tr);
   }
   function readDesignForm() {
     const compounds = [...$('compound-rows').querySelectorAll('tr')].map(tr => ({
       name: tr.querySelector('.compound-name').value,
       source: tr.querySelector('.compound-source').value,
       stock: tr.querySelector('.compound-stock').value,
-      levels: tr.querySelector('.compound-levels').value
+      levels: tr.querySelector('.compound-levels').value,
+      doseScheme: tr.querySelector('.compound-dose-scheme').value,
+      logMin: tr.querySelector('.compound-log-min').value,
+      logMax: tr.querySelector('.compound-log-max').value,
+      logPoints: tr.querySelector('.compound-log-points').value,
+      logIncludeZero: tr.querySelector('.compound-log-zero').checked
     }));
     return {
       mode: $('design-mode').value, doseMode: $('design-dose-mode').value,
@@ -416,6 +470,10 @@
       seed: $('design-seed').value, reserved: $('design-reserved').value,
       subsetSize: $('design-subset-size').value, uniqueCount: $('design-unique-size').value,
       replicates: $('design-replicates').value, compounds,
+      controls: { untreated: $('control-untreated').value, vehicle: $('control-vehicle').value,
+        reference: $('control-reference').value, vehicleSource: $('control-vehicle-source').value,
+        vehicleName: $('control-vehicle-name').value, vehicleVolume: $('control-vehicle-volume').value,
+        referenceCompound: $('control-reference-compound').value, referenceDose: $('control-reference-dose').value },
       addDiluent: $('design-add-diluent').checked, diluentSource: $('design-diluent-source').value,
       diluentName: $('design-diluent-name').value, minTransfer: $('design-min-transfer').value,
       maxTransfer: $('design-max-transfer').value, sourceCapacity: $('design-source-capacity').value
@@ -431,7 +489,13 @@
       'design-subset-size': config.subsetSize, 'design-unique-size': config.uniqueCount,
       'design-replicates': config.replicates, 'design-diluent-source': config.diluentSource,
       'design-diluent-name': config.diluentName, 'design-min-transfer': config.minTransfer,
-      'design-max-transfer': config.maxTransfer, 'design-source-capacity': config.sourceCapacity
+      'design-max-transfer': config.maxTransfer, 'design-source-capacity': config.sourceCapacity,
+      'control-untreated':config.controls?.untreated ?? 0,'control-vehicle':config.controls?.vehicle ?? 0,
+      'control-reference':config.controls?.reference ?? 0,'control-vehicle-source':config.controls?.vehicleSource ?? 'H12',
+      'control-vehicle-name':config.controls?.vehicleName ?? 'Vehicle',
+      'control-vehicle-volume':config.controls?.vehicleVolume ?? 0.3,
+      'control-reference-compound':config.controls?.referenceCompound ?? '',
+      'control-reference-dose':config.controls?.referenceDose ?? ''
     };
     for (const [id,value] of Object.entries(mapping)) $(id).value = value;
     $('design-add-diluent').checked = !!config.addDiluent;
@@ -439,7 +503,7 @@
   }
   function updateDesignMode() {
     const mode = $('design-mode').value;
-    for (const el of document.querySelectorAll('[data-show-mode]')) el.hidden = el.dataset.showMode !== mode;
+    for (const el of document.querySelectorAll('[data-show-mode]')) el.hidden = el.dataset.showMode !== mode && !(mode === 'sparse' && el.dataset.showMode === 'subset');
   }
   function updateDoseLabels() {
     const concentration = $('design-dose-mode').value === 'concentration';
@@ -449,6 +513,7 @@
     levelsHead.textContent = concentration ? 'Target concentrations, comma-separated' : 'Dispense volumes (µL), comma-separated';
     $('design-unit').disabled = !concentration;
     $('design-stock-mic-multiple').disabled = !concentration;
+    updateCompoundDoseRows();
   }
   function updateVolumeMode() {
     const starting = $('design-volume-basis').value === 'starting';
@@ -477,7 +542,7 @@
     select.value = String(current);
     const plate = plates[current];
     $('active-plate-info').textContent = state.plan ?
-      plate.assignments.length + ' treatments · ' + plate.tasks.length + ' steps · ' + plate.reserved.length + ' reserved' :
+      plate.assignments.filter(a=>a.role!=='control').length + ' treatments · ' + plate.assignments.filter(a=>a.role==='control').length + ' controls · ' + plate.tasks.length + ' steps' :
       plate.tasks.length + ' imported dispensing instructions';
   }
   function activatePlate(index) {
@@ -493,7 +558,7 @@
     if (!state.plan) return;
     const plan = state.plan, top = document.createElement('div'); top.className = 'design-summary-top';
     for (const [label, value] of [
-      ['Treatments',plan.summary.wells.toLocaleString()],['Plates',plan.summary.plates.toLocaleString()],
+      ['Treatments',plan.summary.wells.toLocaleString()],['Controls',plan.summary.controls.toLocaleString()],['Plates',plan.summary.plates.toLocaleString()],
       ['Dispensing steps',plan.summary.transfers.toLocaleString()],['Possible combinations',plan.config.totalPossible.toLocaleString()]
     ]) {
       const cell = document.createElement('div'); cell.className = 'design-metric';
@@ -570,10 +635,15 @@
       const plan = state.plan, files = [
         {name:'design_manifest.csv', content:D.manifestCsv(plan)},
         {name:'source_map.csv', content:D.sourceMapCsv(plan)},
+        {name:'sparse_model_matrix.csv',content:D.featureMatrixCsv(plan)},
+        {name:'sparse_feature_legend.csv',content:D.featureLegendCsv(plan)},
+        {name:'measurements_template.csv',content:D.measurementsTemplateCsv(plan)},
         {name:'experiment_config.json', content:JSON.stringify({ name:state.name, ...plan.config,
           summary:plan.summary, warnings:plan.warnings },null,2)+'\n'},
-        {name:'README.txt', content:'I.DOT Plate Studio v3.1 randomized design\n\n' +
-          'The manifest includes reserved and all-zero-dose wells, even without programmed transfers.\n' +
+        {name:'README.txt', content:'I.DOT Plate Studio v3.2.1 randomized design\n\n' +
+          'The manifest includes randomly placed untreated/vehicle/reference controls, and all-zero-dose wells even without programmed transfers.\n' +
+          'Sparse model matrix is a candidate design for sparse-effects analysis, NOT an experimentally proven compressed sensing guarantee.\n' +
+          'Fill measurements_template.csv after the assay, then use the optional Python fit script from this repository.\n' +
           'Volume basis: ' + (plan.config.volumeBasis === 'starting' ? 'fixed starting medium; no top-up required.' : 'fixed final volume; external top-up may be required.') + '\n' +
           'The actual_final_volume_uL and per-compound actual-concentration fields describe the prepared mixture, assuming all required steps are performed.\n' +
           'If external_top_up_uL is nonzero, this volume is NOT dispensed by this protocol.\n' +
@@ -625,6 +695,9 @@
     $('target-format').addEventListener('change', ev => setFormats(ev.target.value, 'targetFormat'));
     $('design-mode').addEventListener('change', updateDesignMode);
     $('design-dose-mode').addEventListener('change', updateDoseLabels);
+    $('compound-rows').addEventListener('change', ev => {
+      if (ev.target && ev.target.matches('.compound-dose-scheme')) updateCompoundDoseRow(ev.target.closest('tr'));
+    });
     $('design-volume-basis').addEventListener('change', updateVolumeMode);
     $('generate-design').addEventListener('click', generateRandomized);
     $('clear-design').addEventListener('click', clearGeneratedDesign);
@@ -633,6 +706,8 @@
       if (!state.plan) return;
       download(slug(state.name) + '_design_manifest.csv', D.manifestCsv(state.plan));
     });
+    $('export-matrix').addEventListener('click', () => {if (state.plan) download(slug(state.name)+'_sparse_model_matrix.csv',D.featureMatrixCsv(state.plan));});
+    $('export-responses').addEventListener('click', () => {if (state.plan) download(slug(state.name)+'_measurements_template.csv',D.measurementsTemplateCsv(state.plan));});
     $('export-batch').addEventListener('click', exportBatch);
     $('export-all-protocol').addEventListener('click', exportCombinedProtocol);
     for (const id of ['idot-source-plate','idot-source-type','idot-liquid-class','idot-additional','idot-waste-well']) $(id).addEventListener('input', render);

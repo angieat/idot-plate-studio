@@ -1,0 +1,40 @@
+{
+  "mode": "sparse",
+  "targetFormat": 96,
+  "sourceFormat": 96,
+  "doseMode": "concentration",
+  "volumeBasis": "starting",
+  "finalVolume": 300,
+  "unit": "µM",
+  "stockMicMultiple": 1000,
+  "maxWellVolume": null,
+  "seed": "1701",
+  "reserved": "",
+  "subsetSize": 72,
+  "uniqueCount": 24,
+  "replicates": 3,
+  "controls": {
+    "untreated": 12,
+    "vehicle": 12,
+    "reference": 0,
+    "vehicleSource": "H12",
+    "vehicleName": "Vehicle",
+    "vehicleVolume": 0.3,
+    "referenceCompound": "",
+    "referenceDose": ""
+  },
+  "compounds": [
+    {"name":"Doxycycline","source":"A1","stock":563,"levels":[0,0.2815,0.563]},
+    {"name":"Carbomycin","source":"A2","stock":297,"levels":[0,0.1485,0.297]},
+    {"name":"Daptomycin","source":"A3","stock":7710,"levels":[0,3.855,7.71]},
+    {"name":"Ceftriaxone","source":"A4","stock":54.1,"levels":[0,0.02705,0.0541]},
+    {"name":"Amoxicillin","source":"A5","stock":164,"levels":[0,0.082,0.164]},
+    {"name":"Piperacillin","source":"A6","stock":483,"levels":[0,0.2415,0.483]}
+  ],
+  "addDiluent": false,
+  "diluentSource":"H11",
+  "diluentName":"Diluent",
+  "minTransfer":0.008,
+  "maxTransfer":30,
+  "sourceCapacity":80
+}

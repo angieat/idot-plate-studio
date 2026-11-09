@@ -23,7 +23,7 @@ for (const file of ['src/core.js','src/idot_v23.js','src/design.js','src/zip.js'
 }
 if (!html.includes('</body>')) throw new Error('Missing closing body tag');
 html = html.replace('</body>', inlineScripts.join('\n') + '\n</body>');
-const destination = path.join(root, 'dist/I.DOT_Plate_Studio_v3_1_for_Mac.html');
+const destination = path.join(root, 'dist/I.DOT_Plate_Studio_v3_2_1_for_Mac.html');
 if (process.argv.includes('--check')) {
   if (!fs.existsSync(destination) || fs.readFileSync(destination, 'utf8') !== html) {
     throw new Error('Standalone HTML is stale. Run: node scripts/build-standalone.js');

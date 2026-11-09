@@ -1,0 +1,1838 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>I.DOT Plate Studio v3.2.1 — Assay Studio 2.3 CSV Planner</title>
+  <style>
+:root{--ink:#25253b;--sub:#6f6d82;--line:#e8e5f0;--fog:#f7f6fb;--purple:#7514e0;--pink:#e775ec;--dark:#211a3d;--focus:#b48af0;--good:#247c65;--bad:#a63f55;--shadow:0 10px 30px rgba(36,20,72,.04);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;color:var(--ink);background:#fbfafc;font-synthesis:none}
+*{box-sizing:border-box} body{margin:0;min-width:360px} button,input,select{font:inherit} button{cursor:pointer} button:disabled{opacity:.48;cursor:not-allowed} a{color:var(--purple)} button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,.well:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.masthead{background:white;border-bottom:1px solid var(--line)} .masthead-inner{max-width:1450px;margin:auto;display:flex;justify-content:space-between;align-items:center;padding:16px 27px}.identity{display:flex;align-items:center;gap:13px}.identity strong{font-size:17px;display:block;letter-spacing:-.2px}.identity small{font-size:10px;letter-spacing:1.3px;color:var(--sub);font-weight:700}.mark{display:grid;place-items:center;width:39px;height:39px;border-radius:12px;color:white;background:linear-gradient(140deg,#7514e0,#dc68d6);font-weight:800;letter-spacing:-1px}.masthead-actions{display:flex;align-items:center;gap:16px}.pill{border:1px solid var(--line);background:var(--fog);border-radius:100px;font-size:12px;padding:8px 12px;color:var(--sub)}
+.shell{max-width:1450px;margin:auto;padding:27px}.intro{display:flex;justify-content:space-between;gap:24px;align-items:center;margin-bottom:20px}.intro h1{margin:0 0 8px;letter-spacing:-1px;font-weight:760;font-size:clamp(24px,3vw,35px)}.intro p{margin:0;color:var(--sub);max-width:760px;line-height:1.6}.intro-count{border-left:1px solid var(--line);min-width:160px;padding:8px 20px;display:flex;flex-direction:column;align-items:center}.intro-count b{font-size:35px;color:var(--purple);line-height:1.1}.intro-count span{font-size:12px;color:var(--sub)}
+.info-strip{padding:12px 16px;background:#f3effe;border:1px solid #e4d9fe;border-left:4px solid var(--purple);border-radius:9px;line-height:1.5;color:#494061;font-size:13px;margin:0 0 18px}.alert{border:1px solid #d9c5ff;background:#f3ebff;padding:12px 16px;margin-bottom:18px;border-radius:10px;line-height:1.45}.alert.error{border-color:#efb3bc;background:#fff2f4;color:#842339}.alert.success{border-color:#acdcca;background:#f0fff8;color:#176d51}
+.panel{background:white;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:22px;margin-bottom:18px;min-width:0}.section-title{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:17px}.section-title h2{font-size:16px;letter-spacing:-.25px;margin:0;font-weight:750}.section-title p{margin:6px 0 0;font-size:12px;color:var(--sub)}.muted{color:var(--sub);font-size:12px}.form-grid{display:grid;grid-template-columns:1.25fr 1fr 1fr 1fr;gap:13px}.form-grid label,.editor-fields label{font-size:12px;color:#59546c;font-weight:650;display:flex;flex-direction:column;gap:7px}.form-grid input,.form-grid select,.editor-fields input,.editor-fields select{height:40px;border:1px solid #ddd8e8;background:#fff;border-radius:9px;color:var(--ink);padding:0 11px;min-width:0;outline:none}.form-grid input:focus,.form-grid select:focus,.editor-fields input:focus,.editor-fields select:focus{border-color:var(--purple)}.file-strip{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:18px}.template-status{margin-left:auto;font-size:12px;color:var(--sub)}.file-button{padding:10px 13px;border:1px solid var(--purple);border-radius:9px;background:#f7f2ff;color:#5528aa;font-size:12px;font-weight:730;cursor:pointer}.file-button.outline{background:white;border-color:var(--line);color:var(--ink)}.file-button:hover{border-color:var(--purple)}.file-button input{position:absolute;width:1px;height:1px;opacity:0}
+.work-grid{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(305px,.85fr);gap:18px}.below-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}.button{border-radius:9px;border:1px solid transparent;background:white;padding:10px 13px;font-weight:700;font-size:12px;white-space:nowrap}.button.ghost{border-color:var(--line);color:var(--ink)}.button.subtle{background:#f8f7fc;color:#524e66;border-color:#eeeaf5}.button.primary{background:var(--purple);color:white}.button.primary.dark{background:var(--dark)}.button.danger{color:#a33654;background:#fff6f8;border-color:#ffd9df}.button:hover:not(:disabled){filter:brightness(.97)}.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:18px}.selection-label{margin-left:auto;font-weight:700;font-size:12px;color:var(--purple)}.legend{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--sub);white-space:nowrap}.key{height:11px;width:11px;border-radius:3px;margin-left:7px}.key.selected-key{border:2px solid var(--purple);background:#f7e8fc}.key.filled-key{background:#e1b1fa}
+.plate-scroller{overflow:auto;padding:13px 8px 19px;border:1px solid #eeebf4;background:linear-gradient(145deg,#faf9fd,#fff);border-radius:12px;max-width:100%;min-height:290px}.plate-grid{--cell:34px;display:grid;grid-template-columns:26px repeat(var(--cols),var(--cell));grid-template-rows:25px repeat(var(--rows),var(--cell));gap:4px;max-width:max-content;margin:auto;align-items:center;justify-items:center;padding-right:6px}.plate-grid[data-format="384"]{--cell:23px;gap:3px}.plate-grid[data-format="1536"]{--cell:17px;gap:2px}.axis-label{color:#9993a6;font-size:11px;font-weight:700;display:grid;place-items:center;width:100%;height:100%}.plate-grid[data-format="1536"] .axis-label{font-size:9px}.well{background:#faf8fd;border:1px solid #ddd8e8;outline:none;display:grid;place-items:center;width:var(--cell);height:var(--cell);border-radius:50%;font-size:9px;color:#786d90;transition:background .08s,border-color .08s,transform .08s;padding:0;position:relative}.well:hover{border-color:var(--purple);transform:scale(1.13);z-index:1}.well.filled{background:var(--fill,#ebd4fa);border-color:#bc97e6;color:#372044}.well.selected{background:linear-gradient(145deg,#f5dbfb,#d9bcfa);border:2px solid #7514e0;box-shadow:0 0 0 2px #f2dafa;color:#361756;font-weight:750}.well[data-well="A1"]::before{content:"";position:absolute;left:-5px;top:-5px;width:3px;height:3px;border-radius:50%;background:var(--purple)}.plate-grid[data-format="384"] .well,.plate-grid[data-format="1536"] .well{font-size:0}.plate-grid[data-format="384"] .well.selected{font-size:8px}.plate-grid[data-format="1536"] .well.selected{font-size:0}.plate-foot{display:flex;justify-content:space-between;gap:16px;margin:14px 2px 0;font-size:11px;color:var(--sub)}.plate-foot span:last-child{font-weight:700;color:var(--purple);white-space:nowrap}
+.editor-fields{display:grid;grid-template-columns:1fr 1fr;gap:13px}.span-2{grid-column:span 2}.editor-actions{display:flex;flex-direction:column;gap:8px;margin:18px 0}.editor-actions .button{width:100%}.inspector{border-top:1px solid var(--line);padding-top:15px}.inspector h3{font-size:13px;margin:0 0 12px}.well-details{max-height:260px;overflow:auto}.well-details h4{margin:11px 0 5px;font-size:12px}.detail-row{display:flex;justify-content:space-between;gap:12px;padding:7px;border-radius:6px;background:#faf9fd;margin:5px 0;font-size:11px}.detail-row b{color:var(--ink)}.source-scroll{min-height:250px}.source-grid{--cell:24px;gap:3px}.source-grid[data-format="384"]{--cell:19px;gap:2px}.source-grid .well{font-size:0}.source-grid .well.source-active{outline:2px solid var(--purple);outline-offset:1px}.subheading{font-size:12px;font-weight:750;margin:16px 0 7px}.source-overhead{font-size:11px;color:var(--sub);display:flex;gap:8px;align-items:flex-start;line-height:1.45}.source-overhead input{accent-color:var(--purple)}.source-totals{overflow:auto;max-height:180px;margin-top:10px}.compact-table{width:100%;border-collapse:collapse;font-size:12px}.compact-table th,.compact-table td{text-align:left;border-bottom:1px solid var(--line);padding:8px}.compact-table th{color:#746b8c;font-size:11px}.micro{font-size:11px;line-height:1.55;color:var(--sub);margin:12px 0 0}
+.status-chip{font-size:11px;background:#fff4f5;border:1px solid #f6d9dc;color:#a15466;border-radius:30px;padding:6px 9px;font-weight:700;white-space:nowrap}.status-chip.ok{background:#eefbf7;color:#177e5c;border-color:#bfeddb}.kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:15px 0}.kpi-grid>div{background:#f8f7fc;border-radius:9px;padding:13px 10px;display:flex;flex-direction:column;gap:5px}.kpi-grid strong{font-size:22px;font-weight:800;letter-spacing:-.6px}.kpi-grid span{font-size:11px;color:var(--sub)}.validation{font-size:12px;line-height:1.6;border:1px solid var(--line);background:#fbfafc;border-radius:9px;padding:12px;margin-bottom:16px;min-height:55px}.validation ul{margin:5px 0;padding-left:20px}.validation .err{color:#a23d52}.validation .warn{color:#8f6717}.validation .ok{color:#257c62}.export-buttons{display:flex;gap:9px;flex-wrap:wrap}.preview{margin-top:17px;border-top:1px solid var(--line);padding-top:13px}.preview summary{font-size:12px;font-weight:650;color:var(--purple);cursor:pointer}.preview pre{padding:12px;background:#f8f7fb;white-space:pre;overflow:auto;max-height:240px;font-size:11px;line-height:1.5}footer{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;color:#938c9e;font-size:11px;padding:10px 0 24px}
+@media(max-width:1040px){.form-grid{grid-template-columns:1fr 1fr}.work-grid,.below-grid{grid-template-columns:1fr}.plate-grid{margin:0 auto}.source-panel .source-grid{margin:auto}}
+@media(max-width:620px){.shell{padding:15px}.masthead-inner{padding:12px 15px}.masthead-actions .pill{display:none}.intro-count{display:none}.form-grid{grid-template-columns:1fr}.panel{padding:16px}.file-strip{align-items:stretch}.template-status{width:100%;margin:4px 0}.plate-heading,.section-title{align-items:flex-start;flex-wrap:wrap}.plate-grid{--cell:30px}.toolbar .button{font-size:11px;padding:9px}.kpi-grid strong{font-size:18px}.plate-foot{flex-direction:column}}
+/* Experiment-design additions */
+.design-panel .section-title{align-items:flex-start}.design-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.design-grid label,.design-options label{display:flex;flex-direction:column;gap:7px;font-size:12px;color:#59546c;font-weight:650;min-width:0}.design-grid input,.design-grid select,.design-options input,.design-options select,.compound-table input,.plate-navigation select{background:white;color:var(--ink);height:40px;padding:0 10px;min-width:0;width:100%;border:1px solid #ddd8e8;border-radius:9px;font:inherit}.design-grid input:focus,.design-grid select:focus,.compound-table input:focus,.design-options input:focus{outline:2px solid #cbb0f5;outline-offset:0}.design-table-head{display:flex;align-items:baseline;justify-content:space-between;gap:15px;margin:21px 0 9px;flex-wrap:wrap}.design-table-head h3{font-size:13px;margin:0}.design-table-head p{font-size:11px;color:var(--sub);margin:0}.table-scroll{max-width:100%;overflow:auto}.compound-table{min-width:970px}.compound-table th{white-space:nowrap}.compound-table th:first-child{min-width:175px}.compound-table th:last-child{min-width:420px}.compound-table td{padding:5px}.compound-table input,.compound-table select{font-size:12px}.compound-table select{background:white;color:var(--ink);height:40px;padding:0 7px;min-width:115px;width:100%;border:1px solid #ddd8e8;border-radius:9px}.compound-doses{min-width:400px}.compound-log-fields{display:grid;grid-template-columns:1fr 1fr 88px auto;align-items:end;gap:7px}.compound-log-fields label{font-size:10px;color:var(--sub);display:flex;flex-direction:column;gap:4px}.compound-log-fields input{height:36px;padding:0 6px}.compound-log-fields .compound-zero-label{align-self:center;display:flex;align-items:center;gap:5px;flex-direction:row;white-space:nowrap}.compound-zero-label input{width:16px;height:16px;accent-color:var(--purple)}.compound-table [hidden]{display:none!important}.design-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin:18px 0}.design-options .checkbox-label{display:flex;flex-direction:row;align-items:center;gap:10px;grid-column:1/-1;font-weight:700;color:var(--ink)}.design-options .checkbox-label input{width:18px;height:18px;accent-color:var(--purple)}.design-caution{margin-bottom:15px}.design-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.design-toolbar .muted{flex:1;line-height:1.5}.design-summary{border-top:1px solid var(--line);padding-top:15px;margin-top:16px}.design-summary-top{display:flex;gap:10px;flex-wrap:wrap}.design-metric{background:#f5f2fa;border-radius:9px;padding:12px 15px;min-width:150px}.design-metric b{font-size:20px;display:block}.design-metric span{font-size:11px;color:var(--sub)}.design-summary .compact-table{max-width:760px}.design-summary h3{font-size:12px;margin:15px 0 5px}.design-summary p{font-size:12px;line-height:1.5;color:var(--sub)}.plate-navigation{border:1px solid #e7dff5;background:#faf7ff;border-radius:9px;margin-bottom:14px;padding:10px 12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}.plate-navigation[hidden]{display:none}.plate-navigation label{display:flex;align-items:center;gap:10px;font-weight:700;font-size:12px}.plate-navigation select{width:165px;height:33px}.well.reserved{background:repeating-linear-gradient(45deg,#dedde3,#dedde3 3px,#f5f3f8 3px,#f5f3f8 6px);border-color:#bcbac6;color:#77707a}.well.assigned-zero{border:2px dashed #b6a0cc;background:#f7f3fc;color:#665572}.well.generated{border-color:#ac8ccf}.editor-fields input:disabled,.editor-fields select:disabled{background:#f6f6f6}.design-warning{font-size:11px;margin:8px 0;color:#7c516e}.preview pre{max-height:240px}
+@media(max-width:950px){.design-grid,.design-options{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:620px){.design-grid,.design-options{grid-template-columns:1fr}.design-toolbar .button{width:100%}.design-options .checkbox-label{grid-column:1}}
+.design-grid [hidden]{display:none!important}
+
+/* v3.2 control wells are distinct from treatment and reserved wells. */
+.well.control { outline:2px solid #1c8475; outline-offset:-2px; box-shadow:inset 0 0 0 1px #1c8475; }
+.well.control.assigned-zero { background:#d6f2eb; }
+
+</style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <div class="identity"><span class="mark">ID</span><div><strong>I.DOT Plate Studio v3.2.1</strong><small>MAC-COMPATIBLE · OFFLINE CSV DESIGNER</small></div></div>
+      <div class="masthead-actions"><span class="pill">Unofficial research tool</span><button class="button ghost" id="load-demo" type="button">Load example</button></div>
+    </div>
+  </header>
+  <main class="shell">
+    <div class="intro"><div><h1>Design and randomize I.DOT plate experiments on your Mac.</h1><p>Assign compound-dose combinations across plates, calculate stock-to-target volumes, and export complete 16-column Assay Studio 2.3.x candidate protocols, including multiple target plates in one CSV. Randomized controls and sparse-analysis matrices are supported.</p></div><div class="intro-count" aria-live="polite"><b id="step-count">0</b><span>dispensing steps</span></div></div>
+    <div class="info-strip" role="note"><strong>Instrument import:</strong> Import a genuine Assay Studio 2.3.x protocol CSV (like the supplied 384- or 1536-well examples). v3.2.1 preserves its five-line setup, all 16 dispensing columns, instrument settings, and L.100 source metadata. Generated files still require verification in Assay Studio. Do not run an unverified protocol.</div>
+    <div id="alert" class="alert" role="status" aria-live="polite" hidden></div>
+    <section class="meta-panel panel" aria-labelledby="setup-title">
+      <div class="section-title"><h2 id="setup-title">1 · Protocol setup</h2><span class="muted">Files stay on your computer.</span></div>
+      <div class="form-grid">
+        <label>Protocol name <input id="protocol-name" value="My_I.DOT_Protocol" maxlength="120"></label>
+        <label>Target format <select id="target-format"><option value="96">96-well · 8 × 12</option><option value="384">384-well · 16 × 24</option><option value="1536">1536-well · 32 × 48</option></select></label>
+        <label>Source format <select id="source-format"><option value="96">96-well</option><option value="384">384-well</option></select></label>
+        <label>Optional physical well-volume limit, including media (µL) <input id="capacity" type="number" min="0" step="any" placeholder="No limit configured"></label>
+      </div>
+      <div class="design-table-head"><h3>Instrument CSV settings for new transfers</h3><p>Imported dispensing rows keep their existing metadata. For newly generated liquids, select a source plate type and valid I.DOT liquid class; never assume the sample liquid class is suitable for your compounds.</p></div>
+      <div class="form-grid">
+        <label>Source Plate name<input id="idot-source-plate" value="Source Plate 1"></label>
+        <label>Source Plate Type<input id="idot-source-type" value="L.100 Plate"></label>
+        <label>Liquid Class Name<input id="idot-liquid-class" value="VSCY 1 mPa*s (H2O)"></label>
+        <label>Additional Volume Per Source Well (µL)<input id="idot-additional" type="number" min="0" step="any" value="0"></label>
+        <label>Waste Well<input id="idot-waste-well" value="Waste Tube"></label>
+      </div>
+      <div class="file-strip">
+        <label class="file-button"><input type="file" id="load-template" accept=".csv,text/csv">Import Assay Studio CSV</label>
+        <label class="file-button outline"><input type="file" id="load-tasks" accept=".csv,text/csv">Import task-list CSV</label>
+        <label class="file-button outline"><input type="file" id="load-project" accept=".json,application/json">Open saved project</label>
+        <div class="template-status" id="template-status">No Assay Studio 2.3.x template loaded</div>
+      </div>
+    </section>
+      <section class="panel design-panel" aria-labelledby="design-title">
+      <div class="section-title"><div><h2 id="design-title">2 · Randomized combinatorial experiment</h2><p>Generate full-factorial designs, sparse-recovery-oriented subsets, or randomized replicates across one or more plates.</p></div><span class="status-chip ok">Seeded & reproducible</span></div>
+      <div class="design-grid">
+        <label>Design mode<select id="design-mode"><option value="subset">Balanced randomized subset</option><option value="full">Full factorial · all combinations</option><option value="replicates">Randomized replicates of subset</option><option value="sparse">Sparse-recovery sampling · diverse combinations</option></select></label>
+        <label>Dose interpretation<select id="design-dose-mode"><option value="concentration">Final concentration from stock</option><option value="volume">Direct dispense volume (µL)</option></select></label>
+        <label>Volume calculation mode<select id="design-volume-basis"><option value="final">Fixed final volume, with top-up</option><option value="starting">Fixed starting medium + antibiotic additions</option></select></label>
+        <label><span id="design-volume-label">Final assay volume (µL)</span><input id="design-final-volume" type="number" min="0.001" step="any" value="20"></label>
+        <label>Concentration unit (stock and target)<input id="design-unit" value="µM" maxlength="24"></label>
+        <label>All stocks at × MIC (optional)<input id="design-stock-mic-multiple" type="number" min="0" step="any" placeholder="e.g. 1000"></label>
+        <label>Random seed<input id="design-seed" value="1701" spellcheck="false"></label>
+        <label>Reserved wells, every plate (optional)<input id="design-reserved" placeholder="e.g. H1:H12, A1" spellcheck="false"></label>
+        <label class="mode-field" data-show-mode="subset">Unique conditions to sample<input id="design-subset-size" type="number" min="1" max="25000" step="1" value="96"></label>
+        <label class="mode-field" data-show-mode="replicates">Distinct conditions<input id="design-unique-size" type="number" min="1" max="25000" step="1" value="24"></label>
+        <label class="mode-field" data-show-mode="replicates">Replicates per condition<input id="design-replicates" type="number" min="1" max="25000" step="1" value="3"></label>
+      </div>
+      <div class="design-table-head"><h3>Randomized controls, mixed across the plate</h3><p>Counts apply per plate. Controls and treatments are shuffled together with the same random seed; you do not need to reserve any rows. Vehicle-only controls require a validated liquid and source position.</p></div>
+      <div class="design-grid">
+        <label>Untreated controls / plate<input id="control-untreated" type="number" min="0" max="1536" step="1" value="0"></label>
+        <label>Vehicle-only controls / plate<input id="control-vehicle" type="number" min="0" max="1536" step="1" value="0"></label>
+        <label>Reference single-drug controls / plate<input id="control-reference" type="number" min="0" max="1536" step="1" value="0"></label>
+        <label>Vehicle source well<input id="control-vehicle-source" value="H12" spellcheck="false"></label>
+        <label>Vehicle liquid name (Assay Studio)<input id="control-vehicle-name" value="Vehicle"></label>
+        <label>Vehicle dispense per control (µL)<input id="control-vehicle-volume" type="number" min="0.001" step="any" value="0.3"></label>
+        <label>Reference compound name<input id="control-reference-compound" placeholder="Exact compound name"></label>
+        <label>Reference compound dose (µM or µL)<input id="control-reference-dose" type="number" step="any" placeholder="Must match a listed nonzero level"></label>
+      </div>
+      <p class="micro">A reference control is one compound at one listed concentration; the other antibiotics are zero. Match vehicle controls to your actual stock solvents—this planner cannot infer DMSO or solvent contributions.</p>
+      <div class="design-table-head"><h3>Compounds and dose levels</h3><p>For each source, choose manual levels or a log-spaced concentration range. A log range uses 2–4 geometrically spaced positive doses; include 0 to allow absent-compound combinations and antibiotic-free controls. Stock and target units must match.</p></div>
+      <div class="table-scroll"><table class="compact-table compound-table"><thead><tr><th>Compound / Liquid Name</th><th>I.DOT source well</th><th>Stock concentration</th><th>Dose scheme</th><th>Dose definition (same concentration unit)</th></tr></thead><tbody id="compound-rows"></tbody></table></div>
+      <p class="micro">Example for a 1,000× MIC stock: set log minimum = 0.1× MIC, maximum = 1× MIC, 3 positive points, and Include zero. Each compound then has 0, 0.1×, 0.316×, and 1× MIC as candidate doses. Sparse sampling chooses randomized combinations from these discrete levels; it does not generate arbitrary continuous concentrations.</p>
+      <div class="design-options">
+        <label class="checkbox-label"><input id="design-add-diluent" type="checkbox"> Include top-up/diluent as I.DOT transfers</label>
+        <label>Diluent source<input id="design-diluent-source" value="H12" spellcheck="false"></label>
+        <label>Diluent liquid-class name<input id="design-diluent-name" value="Diluent"></label>
+        <label>Min transfer (µL)<input id="design-min-transfer" type="number" step="any" value="0.008"></label>
+        <label>Max transfer (µL)<input id="design-max-transfer" type="number" step="any" value="30"></label>
+        <label>Source usable volume (µL, 0 = off)<input id="design-source-capacity" type="number" step="any" value="80"></label>
+      </div>
+      <p class="micro design-caution" id="design-caution">In fixed-final-volume mode, unchecked top-up means you must add the manifest's external_top_up_uL separately to reach the intended concentrations. Check source-well capacity, consumables, and liquid classes for your I.DOT model.</p>
+      <div class="design-toolbar"><button id="generate-design" class="button primary" type="button">Generate randomized design</button><button id="clear-design" class="button ghost" type="button" disabled>Return to manual editor</button><span id="design-status" class="muted">No randomized design generated yet.</span></div>
+      <div id="design-summary" class="design-summary" hidden></div>
+    </section>
+    <div class="work-grid">
+      <section class="panel plate-panel" aria-labelledby="plate-title">
+        <div class="section-title plate-heading"><div><h2 id="plate-title">3 · Destination plate layout</h2><p>Click wells to select them; Shift-click a second well to select a rectangle.</p></div><div class="legend"><span class="key selected-key"></span>Selected <span class="key filled-key"></span>Has dispense</div></div>
+        <div class="toolbar"><button class="button subtle" id="select-all" type="button">Select all</button><button class="button subtle" id="select-none" type="button">Deselect</button><button class="button subtle" id="select-row" type="button">Row</button><button class="button subtle" id="select-col" type="button">Column</button><span class="selection-label" id="selected-count">0 selected</span></div>
+        <div id="plate-navigation" class="plate-navigation" hidden><label>Viewing plate <select id="active-plate"></select></label><span id="active-plate-info" class="muted"></span></div>
+        <div class="plate-scroller" role="region" aria-label="Scrollable target plate map" tabindex="0"><div id="plate-grid" class="plate-grid"></div></div>
+        <div class="plate-foot"><span>Well color represents combined planned volume, not measured liquid.</span><span id="target-count">0 filled wells</span></div>
+      </section>
+      <aside class="panel editor-panel" aria-labelledby="editor-title">
+        <div class="section-title"><h2 id="editor-title">4 · Add a dispensing step</h2><span class="muted" id="selected-summary">Choose target wells</span></div>
+        <div class="editor-fields">
+          <label>Source well <input id="source-well" value="A1" spellcheck="false" placeholder="A1"></label>
+          <label>Dispense volume (µL) <input id="dispense-volume" type="number" min="0" step="any" value="0.5"></label>
+          <label class="span-2">Liquid name (exact Assay Studio library name) <input id="liquid-name" placeholder="e.g. Water" spellcheck="false"></label>
+          <label class="span-2">Apply mode <select id="apply-mode"><option value="add">Add another step to selected wells</option><option value="replace">Replace all steps in selected wells</option></select></label>
+        </div>
+        <div class="editor-actions"><button class="button primary" id="apply" type="button">Apply to selected wells</button><button class="button danger" id="remove-selected" type="button">Remove selected-well steps</button></div>
+        <div class="inspector"><h3>Selected well details</h3><div id="well-details" class="well-details muted">Click a well to inspect its planned dispenses.</div></div>
+      </aside>
+    </div>
+    <div class="below-grid">
+      <section class="panel source-panel" aria-labelledby="source-title">
+        <div class="section-title"><div><h2 id="source-title">5 · Source plate map</h2><p>Click a source well to populate the editor.</p></div><span id="source-count" class="muted">0 used</span></div>
+        <div class="plate-scroller source-scroll" role="region" aria-label="Scrollable source plate map" tabindex="0"><div id="source-grid" class="plate-grid source-grid"></div></div>
+        <div class="subheading">Source planning volumes</div>
+        <label class="source-overhead"><input type="checkbox" id="source-overhead"> Show preparation estimate: dispense total × 1.05 + 1 µL per used source well</label>
+        <div id="source-table" class="source-totals muted">No source wells in use.</div>
+        <p class="micro">The preparation estimate is an optional planning assumption, not an I.DOT calibration or validated dead-volume requirement.</p>
+      </section>
+      <section class="panel export-panel" aria-labelledby="export-title">
+        <div class="section-title"><h2 id="export-title">6 · Review and export</h2><span id="valid-badge" class="status-chip">Not ready</span></div>
+        <div class="kpi-grid"><div><strong id="summary-steps">0</strong><span>Transfers</span></div><div><strong id="summary-targets">0</strong><span>Target wells</span></div><div><strong id="summary-total">0 µL</strong><span>Dispense total</span></div></div>
+        <div id="validation" class="validation" role="status" aria-live="polite"></div>
+        <div class="export-buttons"><button id="export-manifest" class="button subtle" type="button" disabled>Download design manifest</button><button id="export-matrix" class="button subtle" type="button" disabled>Download sparse model matrix</button><button id="export-responses" class="button subtle" type="button" disabled>Download measurements template</button><button id="export-batch" class="button primary" type="button" disabled>Download all plates ZIP</button><button id="export-all-protocol" class="button primary dark" type="button" disabled>Download combined multi-plate CSV</button><button id="export-list" class="button primary" type="button">Download task list CSV</button><button id="export-protocol" class="button primary dark" type="button">Download Assay Studio CSV</button><button id="export-json" class="button subtle" type="button">Save project JSON</button></div>
+        <p class="micro">The four-column task list is for planning only. The full Assay Studio 2.3.x export uses five setup/header rows and 16 dispensing columns, including I.DOT-specific 1536-well notation. Import a matching instrument-generated CSV first. For randomized designs, ZIP export also includes the control manifest, feature matrix, feature legend, and blank measurements template.</p>
+        <details class="preview"><summary>Preview first 14 CSV rows</summary><pre id="csv-preview" tabindex="0">Add transfers to preview CSV.</pre></details>
+      </section>
+    </div>
+    <footer><span>Community-built planning software · Not affiliated with DISPENDIX or BICO.</span><a href="https://www.dispendix.com/knowledge-center" target="_blank" rel="noopener noreferrer">Instrument support</a><span>Local-first · No accounts or telemetry</span></footer>
+  </main>
+<script>
+/* I.DOT Plate Studio — independent, offline CSV layout utilities. MIT licensed. */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  root.IDotCore = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  const FORMATS = Object.freeze({
+    96: Object.freeze({ rows: 8, cols: 12 }),
+    384: Object.freeze({ rows: 16, cols: 24 }),
+    1536: Object.freeze({ rows: 32, cols: 48 })
+  });
+  const TASK_HEADER = Object.freeze(['Source Well', 'Target Well', 'Volume [µL]', 'Liquid Name']);
+
+  function formatInfo(format) {
+    const info = FORMATS[Number(format)];
+    if (!info) throw new Error('Unsupported plate format: ' + format);
+    return info;
+  }
+  function rowName(index) {
+    if (!Number.isInteger(index) || index < 0) throw new Error('Invalid row index');
+    let name = '';
+    do { name = String.fromCharCode(65 + index % 26) + name; index = Math.floor(index / 26) - 1; } while (index >= 0);
+    return name;
+  }
+  function rowIndex(name) {
+    let n = 0;
+    for (const ch of name) n = n * 26 + ch.charCodeAt(0) - 64;
+    return n - 1;
+  }
+  function parseWell(well, format) {
+    const match = /^([A-Za-z]+)0*([1-9][0-9]*)$/.exec(String(well || '').trim());
+    if (!match) throw new Error('Invalid well position: ' + String(well));
+    const r = rowIndex(match[1].toUpperCase());
+    const c = Number(match[2]) - 1;
+    const dims = formatInfo(format);
+    if (r >= dims.rows || c >= dims.cols) throw new Error('Well ' + well + ' is outside the ' + format + '-well plate');
+    return { row: r, col: c, name: rowName(r) + (c + 1) };
+  }
+  function allWells(format) {
+    const { rows, cols } = formatInfo(format);
+    const result = [];
+    for (let r = 0; r < rows; r++) for (let c = 1; c <= cols; c++) result.push(rowName(r) + c);
+    return result;
+  }
+  function orderTasks(tasks, format) {
+    return tasks.slice().sort((a, b) => {
+      const x = parseWell(a.target, format), y = parseWell(b.target, format);
+      return x.row - y.row || x.col - y.col || a.liquid.localeCompare(b.liquid) || a.source.localeCompare(b.source);
+    });
+  }
+  function cleanLiquid(text) {
+    const v = String(text == null ? '' : text).trim();
+    if (!v) throw new Error('Liquid name cannot be empty');
+    if (/^[=+@\-\t\r]/.test(v)) throw new Error('Liquid name begins with a spreadsheet formula character: ' + v);
+    if (/[\r\n]/.test(v)) throw new Error('Liquid name cannot contain a line break');
+    return v;
+  }
+  function makeTask(record, sourceFormat, targetFormat) {
+    const source = parseWell(record.source, sourceFormat).name;
+    const target = parseWell(record.target, targetFormat).name;
+    const raw = String(record.volume == null ? '' : record.volume).trim();
+    if (!/^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw)) throw new Error('Invalid dispense volume: ' + raw);
+    const volume = Number(raw);
+    if (!Number.isFinite(volume) || volume <= 0) throw new Error('Dispense volume must be greater than zero');
+    return { source, target, volume, liquid: cleanLiquid(record.liquid) };
+  }
+  function numberText(v) { return Number(Number(v).toPrecision(12)).toString(); }
+  function csvCell(value) {
+    const s = String(value == null ? '' : value);
+    return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  function csvRows(rows, newline) { return rows.map(row => row.map(csvCell).join(',')).join(newline || '\r\n') + (newline || '\r\n'); }
+  function parseCsv(text) {
+    let contents = String(text || '').replace(/^\uFEFF/, '');
+    const rows = [], row = [];
+    let cell = '', inQuotes = false;
+    for (let i = 0; i < contents.length; i++) {
+      const ch = contents[i];
+      if (inQuotes) {
+        if (ch === '"' && contents[i + 1] === '"') { cell += '"'; i++; }
+        else if (ch === '"') inQuotes = false;
+        else cell += ch;
+      } else if (ch === '"' && cell === '') inQuotes = true;
+      else if (ch === ',') { row.push(cell); cell = ''; }
+      else if (ch === '\n' || ch === '\r') {
+        if (ch === '\r' && contents[i + 1] === '\n') i++;
+        row.push(cell); rows.push(row.splice(0)); cell = '';
+      } else cell += ch;
+    }
+    if (inQuotes) throw new Error('CSV has an unclosed quoted value');
+    if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+    return rows;
+  }
+  function headerCanonical(value) { return String(value || '').trim().toLowerCase().replace(/[µμ]/g, 'u').replace(/[^a-z0-9]/g, ''); }
+  function isTaskHeader(row) {
+    if (!row || row.length < 4) return false;
+    const cells = row.slice(0, 4).map(headerCanonical);
+    return /^sourcewell$/.test(cells[0]) && /^(targetwell|destinationwell)$/.test(cells[1]) && /^(volumeul|volume|dispensevolumeul)$/.test(cells[2]) && /^(liquidname|liquid)$/.test(cells[3]);
+  }
+  function detectLabelFormat(value) {
+    const matches = String(value || '').match(/(?:^|[^\d])(1536|384|96)(?=[^\d]|$)/);
+    return matches ? Number(matches[1]) : null;
+  }
+  function importCsv(text, sourceFormat, targetFormat) {
+    const rows = parseCsv(text);
+    if (!rows.length) throw new Error('CSV is empty');
+    const full = rows.length >= 4 && isTaskHeader(rows[3]);
+    const list = !full && isTaskHeader(rows[0]);
+    const firstTask = full ? 4 : list ? 1 : 0;
+    if (!full && rows[0] && rows[0].length !== 4) throw new Error('CSV row 1 must have exactly four task columns, unless importing an Assay Studio protocol');
+    const tasks = [];
+    for (let i = firstTask; i < rows.length; i++) {
+      const row = rows[i];
+      if (row.every(value => !String(value).trim())) continue;
+      if (row.length < 4 || row.slice(4).some(x => String(x).trim() !== '')) throw new Error('CSV row ' + (i + 1) + ' must have exactly four task columns');
+      try { tasks.push(makeTask({ source: row[0], target: row[1], volume: row[2], liquid: row[3] }, sourceFormat, targetFormat)); }
+      catch (err) { throw new Error('CSV row ' + (i + 1) + ': ' + err.message); }
+    }
+    let template = null;
+    if (full) {
+      const lines = String(text).replace(/^\uFEFF/, '').split(/\r\n|\n|\r/);
+      if (lines.length < 4) throw new Error('Cannot preserve the four-line header');
+      template = {
+        headerLines: lines.slice(0, 4),
+        plateLabel: (rows[1] || [])[4] || '',
+        sourceLabel: (rows[1] || [])[0] || '',
+        softwareVersion: (rows[0] || [])[1] || '',
+        originalName: (rows[0] || [])[0] || ''
+      };
+    }
+    return { tasks, template, full, hasColumnHeader: full || list };
+  }
+  function validateTemplate(template, targetFormat, sourceFormat) {
+    const errors = [], warnings = [];
+    if (!template || !Array.isArray(template.headerLines) || template.headerLines.length !== 4 ||
+        !isTaskHeader(parseCsv(template.headerLines[3])[0])) {
+      errors.push('A valid Assay Studio CSV template with its original four-line header is required for full-protocol export.');
+      return { errors, warnings };
+    }
+    const rows = parseCsv(template.headerLines.join('\n'));
+    const dest = detectLabelFormat(rows[1] && rows[1][4]);
+    const src = detectLabelFormat(rows[1] && rows[1][0]);
+    if (dest && dest !== Number(targetFormat)) errors.push('The template target plate is ' + dest + '-well but the layout is ' + targetFormat + '-well.');
+    if (!dest) warnings.push('Target plate format could not be inferred from template. Confirm its labware matches this layout.');
+    if (src && src !== Number(sourceFormat)) errors.push('The template source plate is ' + src + '-well but the selected source format is ' + sourceFormat + '-well.');
+    if (!src) warnings.push('Confirm template source plate type and physical source consumables.');
+    return { errors, warnings };
+  }
+  function validateTasks(tasks, sourceFormat, targetFormat, maxPerWell) {
+    const errors = [], warnings = [], checked = [];
+    (tasks || []).forEach((task, i) => {
+      try { checked.push(makeTask(task, sourceFormat, targetFormat)); }
+      catch (err) { errors.push('Task ' + (i + 1) + ': ' + err.message); }
+    });
+    const byTarget = {}, liquidsBySource = {};
+    for (const task of checked) {
+      byTarget[task.target] = (byTarget[task.target] || 0) + task.volume;
+      (liquidsBySource[task.source] ||= new Set()).add(task.liquid);
+    }
+    for (const [source, liquids] of Object.entries(liquidsBySource)) {
+      if (liquids.size > 1) errors.push('Source ' + source + ' is assigned more than one liquid name: ' + [...liquids].join(', ') + '.');
+    }
+    const bound = Number(maxPerWell);
+    if (Number.isFinite(bound) && bound > 0) {
+      for (const [well, volume] of Object.entries(byTarget)) {
+        if (volume > bound + 1e-9) errors.push('Target ' + well + ' has ' + numberText(volume) + ' µL, above the configured ' + bound + ' µL limit.');
+      }
+    }
+    if (!checked.length) errors.push('Add at least one dispensing step.');
+    if (checked.some(t => t.volume < 0.008)) warnings.push('Volumes below 0.008 µL (8 nL) need review against instrument and liquid-class specifications.');
+    return { errors, warnings, checked };
+  }
+  function totals(tasks) {
+    const sources = {}, targets = {};
+    for (const t of tasks) {
+      sources[t.source] = (sources[t.source] || 0) + t.volume;
+      targets[t.target] = (targets[t.target] || 0) + t.volume;
+    }
+    return {
+      sources, targets, total: tasks.reduce((sum, t) => sum + t.volume, 0),
+      stepCount: tasks.length, targetCount: Object.keys(targets).length,
+      sourceCount: Object.keys(sources).length
+    };
+  }
+  function exportTaskCsv(tasks, sourceFormat, targetFormat) {
+    const ready = validateTasks(tasks, sourceFormat, targetFormat);
+    if (ready.errors.length) throw new Error(ready.errors.join(' '));
+    return csvRows([TASK_HEADER, ...ready.checked.map(t => [t.source, t.target, numberText(t.volume), t.liquid])]);
+  }
+  function exportProtocolCsv(tasks, template, name, sourceFormat, targetFormat) {
+    const checked = validateTasks(tasks, sourceFormat, targetFormat);
+    const validated = validateTemplate(template, targetFormat, sourceFormat);
+    const errors = [...checked.errors, ...validated.errors];
+    if (errors.length) throw new Error(errors.join(' '));
+    // Preserve line 4 byte-for-byte; update only the protocol name in A1.
+    const headerLines = template.headerLines.slice();
+    const headerFirst = parseCsv(headerLines[0])[0];
+    const safeName = String(name || '').trim();
+    if (!safeName || /[\r\n]/.test(safeName)) throw new Error('Enter a single-line protocol name');
+    headerFirst[0] = safeName;
+    headerLines[0] = headerFirst.map(csvCell).join(',');
+    const newline = '\r\n';
+    return headerLines.join(newline) + newline + checked.checked.map(t => [t.source, t.target, numberText(t.volume), t.liquid].map(csvCell).join(',')).join(newline) + newline;
+  }
+  return { FORMATS, TASK_HEADER, formatInfo, rowName, parseWell, allWells, orderTasks, makeTask,
+    parseCsv, csvRows, csvCell, isTaskHeader, detectLabelFormat, importCsv, validateTemplate,
+    validateTasks, totals, exportTaskCsv, exportProtocolCsv, numberText };
+});
+
+</script>
+<script>
+/* I.DOT Assay Studio 2.3.2.6 CSV import/export — offline; based on user-provided CSV examples. */
+(function (root, factory) {
+  const core = typeof module === 'object' && module.exports ? require('./core.js') : root.IDotCore;
+  const api = factory(core);
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  root.IDotV23 = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (C) {
+  'use strict';
+  const HEADER = Object.freeze([
+    'Target Plate', 'Target Plate Type', 'Target Plate Barcode', 'Target Well', 'Waste Well',
+    'Source Plate', 'Source Plate Type', 'Source Plate Barcode', 'Source Well', 'Volume [uL]',
+    'Liquid Name', 'Additional Volume Per Source Well', 'Liquid Class Name', 'X Offset', 'Y Offset', 'Spot Array'
+  ]);
+  const VERSION = '2.3.2.6';
+  const validText = value => String(value == null ? '' : value);
+  const plateName = number => 'Target Plate ' + number;
+  function safe(value, what) {
+    const v = validText(value).trim();
+    if (!v || /[\r\n]/.test(v) || /^[=+@\-\t\r]/.test(v)) throw new Error(what + ' is empty or unsafe: ' + v);
+    return v;
+  }
+  function toIdotWell(well, format) {
+    const pos = C.parseWell(well, format), col = String(pos.col + 1).padStart(2, '0');
+    if (Number(format) === 1536) {
+      return String.fromCharCode(65 + pos.row % 8) + String.fromCharCode(97 + Math.floor(pos.row / 8)) + col;
+    }
+    return C.rowName(pos.row) + col;
+  }
+  function fromIdotWell(well, format) {
+    const text = validText(well).trim();
+    if (Number(format) === 1536) {
+      const m = /^([A-H])([a-d])0?([1-9][0-9]?)$/.exec(text);
+      if (m) return C.parseWell(C.rowName((m[2].charCodeAt(0) - 97) * 8 + m[1].charCodeAt(0) - 65) + Number(m[3]), format).name;
+    }
+    return C.parseWell(text, format).name;
+  }
+  function scientific(number) {
+    const n = Number(number);
+    if (!Number.isFinite(n) || n < 0) throw new Error('Non-finite or negative number is not supported');
+    if (n === 0) return '0e0';
+    const [mantissa, exponent] = n.toExponential(11).split('e');
+    return Number(mantissa).toString() + 'e' + Number(exponent).toString();
+  }
+  function formatLabel(format) { C.formatInfo(format); return format + '-Well'; }
+  function readName(s) {
+    const m = /^Target Plate ([1-9]\d*)$/.exec(validText(s));
+    if (!m) throw new Error('Unexpected Target Plate value: ' + s);
+    return Number(m[1]);
+  }
+  function headerIsExact(row) { return !!row && row.length === HEADER.length && HEADER.every((x, i) => row[i] === x); }
+  function isProtocol(text) {
+    const rows = C.parseCsv(text);
+    return rows.length >= 5 && rows[0].length === 2 && rows[0][0] === 'sep=' && headerIsExact(rows[4]);
+  }
+  function importProtocol(text, sourceFormat) {
+    const rows = C.parseCsv(text);
+    if (rows.length < 6 || rows[0].length !== 2 || rows[0][0] !== 'sep=' || !headerIsExact(rows[4])) {
+      throw new Error('Not an Assay Studio 2.3.x 16-column CSV with sep=, and the complete fifth-line table header.');
+    }
+    if (rows[1].length !== 5 || rows[2].length !== 7 || rows[3].some(v => v.trim())) {
+      throw new Error('Assay Studio metadata rows are not in the expected 2.3.2.6 structure.');
+    }
+    const dims = new Set(), byPlate = new Map(), liquidProfiles = {}, parsed = [];
+    const sourceFmt = Number(sourceFormat) || 96;
+    for (let i = 5; i < rows.length; i++) {
+      const row = rows[i];
+      if (row.length === 1 && !row[0]) continue;
+      if (row.length !== HEADER.length) throw new Error('Line ' + (i + 1) + ' has ' + row.length + ' columns; expected 16.');
+      const match = /^(96|384|1536)-Well$/.exec(row[1]);
+      if (!match) throw new Error('Line ' + (i + 1) + ': unsupported Target Plate Type: ' + row[1]);
+      const targetFormat = Number(match[1]);
+      dims.add(targetFormat);
+      const plate = readName(row[0]);
+      let task;
+      try {
+        task = C.makeTask({ source: fromIdotWell(row[8], sourceFmt),
+          target: fromIdotWell(row[3], targetFormat), volume: row[9], liquid: row[10] }, sourceFmt, targetFormat);
+      } catch (err) { throw new Error('Line ' + (i + 1) + ': ' + err.message); }
+      const meta = {
+        targetPlate: row[0], targetPlateType: row[1], targetBarcode: row[2], wasteWell: row[4],
+        sourcePlate: row[5], sourcePlateType: row[6], sourceBarcode: row[7], additional: row[11],
+        liquidClass: row[12], xOffset: row[13], yOffset: row[14], spotArray: row[15],
+        originalVolumeText: row[9]
+      };
+      task.idot = meta; task.targetPlate = plate;
+      parsed.push(task);
+      if (!byPlate.has(plate)) byPlate.set(plate, []);
+      byPlate.get(plate).push(task);
+      if (!liquidProfiles[task.liquid]) liquidProfiles[task.liquid] = {
+        sourcePlate: meta.sourcePlate, sourcePlateType: meta.sourcePlateType, sourceBarcode: meta.sourceBarcode,
+        wasteWell: meta.wasteWell, additional: meta.additional, liquidClass: meta.liquidClass
+      };
+    }
+    if (!parsed.length) throw new Error('The Assay Studio CSV has no dispensing rows.');
+    if (dims.size > 1) throw new Error('Mixed plate formats in one import cannot be shown in one plate map.');
+    const fmt = [...dims][0];
+    const rawLines = validText(text).replace(/^\uFEFF/, '').split(/\r\n|\n|\r/);
+    const template = {
+      kind: 'idot-v23', headerLines: rawLines.slice(0,5), softwareVersion: rows[1][1],
+      originalName: rows[1][0], targetFormat: fmt, sourceFormat: sourceFmt,
+      plateLabel: formatLabel(fmt), liquidProfiles,
+      defaults: { sourcePlate: parsed[0].idot.sourcePlate, sourcePlateType: parsed[0].idot.sourcePlateType,
+        sourceBarcode: parsed[0].idot.sourceBarcode, targetBarcode: parsed[0].idot.targetBarcode,
+        wasteWell: parsed[0].idot.wasteWell, liquidClass: parsed[0].idot.liquidClass,
+        additional: '0e0', xOffset: '', yOffset: '', spotArray: '' },
+      originalPlateNumbers: [...byPlate.keys()].sort((a,b)=>a-b)
+    };
+    const plates = [...byPlate.entries()].sort((a,b)=>a[0]-b[0]).map(([number,tasks]) => ({number,tasks}));
+    return { full:true, tasks: parsed, template, plates, targetFormat: fmt, sourceFormat: sourceFmt, originalName: rows[1][0] };
+  }
+  function validateTemplate(template, targetFormat, sourceFormat) {
+    const errors = [], warnings = [];
+    if (!template || template.kind !== 'idot-v23' || !Array.isArray(template.headerLines) || template.headerLines.length !== 5) {
+      errors.push('Import a genuine Assay Studio 2.3.x CSV (five metadata/header lines and 16 columns) before full-protocol export.');
+      return { errors, warnings };
+    }
+    try {
+      const rows = C.parseCsv(template.headerLines.join('\r\n'));
+      if (rows[0][0] !== 'sep=' || !headerIsExact(rows[4]) || rows[1].length !== 5 || rows[2].length !== 7 || rows[3].some(Boolean)) {
+        errors.push('The Assay Studio 2.3.x template header is malformed.');
+      }
+      if (Number(template.targetFormat) !== Number(targetFormat)) errors.push('The template target plate is ' + template.targetFormat + '-well but the layout is ' + targetFormat + '-well.');
+      if (Number(template.sourceFormat) !== Number(sourceFormat)) errors.push('Source format mismatch: template was loaded as ' + template.sourceFormat + '-well, but current source is ' + sourceFormat + '-well.');
+      if (rows[1][1] !== VERSION) warnings.push('Template reports software version ' + rows[1][1] + '; tested reference files use ' + VERSION + '.');
+    } catch (err) { errors.push('Cannot parse Assay Studio header: ' + err.message); }
+    return { errors, warnings };
+  }
+  function cleanSettings(template, settings) {
+    const defaults = template.defaults || {};
+    return { sourcePlate: safe(settings.sourcePlate || defaults.sourcePlate || 'Source Plate 1','Source plate'),
+      sourcePlateType: safe(settings.sourcePlateType || defaults.sourcePlateType || 'L.100 Plate','Source plate type'),
+      sourceBarcode: validText(settings.sourceBarcode ?? defaults.sourceBarcode ?? ''),
+      targetBarcode: validText(settings.targetBarcode ?? defaults.targetBarcode ?? ''),
+      wasteWell: safe(settings.wasteWell || defaults.wasteWell || 'Waste Tube','Waste well'),
+      liquidClass: safe(settings.liquidClass || defaults.liquidClass || 'VSCY 1 mPa*s (H2O)','Liquid class'),
+      additional: validText(settings.additional ?? defaults.additional ?? '0e0').trim(),
+      xOffset: validText(settings.xOffset ?? ''), yOffset: validText(settings.yOffset ?? ''), spotArray: validText(settings.spotArray ?? '')
+    };
+  }
+  function exportProtocol(tasks, template, name, sourceFormat, targetFormat, options={}) {
+    const validation = validateTemplate(template, targetFormat, sourceFormat);
+    if (validation.errors.length) throw new Error(validation.errors.join(' '));
+    if (!Array.isArray(tasks) || !tasks.length) throw new Error('Cannot export an empty protocol.');
+    const title = safe(name, 'Protocol name');
+    const settings = cleanSettings(template, options.settings || {});
+    const defaultPlate = Number(options.plateNumber) || 1;
+    const liquidProfiles = template.liquidProfiles || {};
+    const out = [];
+    for (const [i, raw] of tasks.entries()) {
+      let task;
+      try { task = C.makeTask(raw, sourceFormat, targetFormat); }
+      catch (err) { throw new Error('Dispense ' + (i + 1) + ': ' + err.message); }
+      const plateNo = Number(raw.targetPlate || defaultPlate);
+      if (!Number.isSafeInteger(plateNo) || plateNo < 1) throw new Error('Dispense ' + (i + 1) + ': invalid target plate number');
+      const meta = raw.idot || {};
+      const profile = liquidProfiles[task.liquid] || {};
+      const choose = (field) => meta[field] !== undefined ? meta[field] : (profile[field] !== undefined ? profile[field] : settings[field]);
+      const additional = validText(choose('additional'));
+      if (!/^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(additional) || !Number.isFinite(Number(additional)) || Number(additional)<0) {
+        throw new Error('Dispense ' + (i+1) + ': additional source volume must be zero or positive numeric µL');
+      }
+      const textVolume = meta.originalVolumeText && Number(meta.originalVolumeText) === task.volume ? meta.originalVolumeText : scientific(task.volume);
+      const cell = [
+        plateName(plateNo), formatLabel(targetFormat), validText(choose('targetBarcode')),
+        toIdotWell(task.target, targetFormat), safe(choose('wasteWell'),'Waste well'),
+        safe(choose('sourcePlate'),'Source plate'), safe(choose('sourcePlateType'),'Source plate type'),
+        validText(choose('sourceBarcode')), toIdotWell(task.source, sourceFormat), textVolume, task.liquid,
+        additional, safe(choose('liquidClass'),'Liquid class'), validText(choose('xOffset')),
+        validText(choose('yOffset')), validText(choose('spotArray'))
+      ];
+      out.push(cell);
+    }
+    const lines = template.headerLines.slice();
+    const nameRow = C.parseCsv(lines[1])[0]; nameRow[0] = title;
+    lines[1] = nameRow.map(C.csvCell || (x=>x)).join(',');
+    return '\uFEFF' + lines.join('\r\n') + '\r\n' + C.csvRows(out, '\r\n');
+  }
+  function exportCombined(plan, template, name, sourceFormat, targetFormat, options={}) {
+    if (!plan || !Array.isArray(plan.plates)) throw new Error('Expected multiple plates');
+    const all = [];
+    for (const plate of plan.plates) for (const task of plate.tasks) all.push({ ...task, targetPlate: plate.number });
+    return exportProtocol(all, template, name, sourceFormat, targetFormat, options);
+  }
+  return { HEADER, VERSION, isProtocol, importProtocol, validateTemplate, toIdotWell,
+    fromIdotWell, scientific, exportProtocol, exportCombined };
+});
+
+</script>
+<script>
+/* Deterministic combinatorial experiment design for I.DOT Plate Studio. No dependencies. */
+(function (root, factory) {
+  const api = factory(typeof module === 'object' && module.exports ? require('./core.js') : root.IDotCore);
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  root.IDotDesign = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (C) {
+  'use strict';
+  function assert(ok, message) { if (!ok) throw new Error(message); }
+  function seededRandom(seed) {
+    let h = 2166136261 >>> 0;
+    for (const c of String(seed)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
+    return function () { h += 0x6D2B79F5; let t = h; t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  function shuffle(a, random) {
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+  function positiveInteger(value, name, zeroAllowed) {
+    const n = Number(value);
+    assert(Number.isSafeInteger(n) && (zeroAllowed ? n >= 0 : n > 0), name + ' must be ' + (zeroAllowed ? 'a nonnegative' : 'a positive') + ' integer.');
+    return n;
+  }
+  function positiveNumber(value, name, zeroAllowed) {
+    const n = Number(value);
+    assert(String(value).trim() !== '' && Number.isFinite(n) && (zeroAllowed ? n >= 0 : n > 0), name + ' must be ' + (zeroAllowed ? 'a nonnegative' : 'a positive') + ' finite number.');
+    return n;
+  }
+  function parseLevels(value, name) {
+    const pieces = Array.isArray(value) ? value : String(value).split(',');
+    assert(pieces.length >= 2 && pieces.length <= 5, name + ': specify 2–5 distinct comma-separated levels.');
+    const levels = pieces.map(item => positiveNumber(item, name + ' dose level', true));
+    assert(new Set(levels).size === levels.length, name + ': dose levels must be distinct.');
+    return levels;
+  }
+  // An optional zero dose is separate from a strictly positive logarithmic range.
+  // Use actual numeric concentration values; endpoints are always included.
+  function logSpacedLevels(minimum, maximum, points, includeZero = true) {
+    const min = positiveNumber(minimum, 'Log-range minimum'), max = positiveNumber(maximum, 'Log-range maximum');
+    const count = positiveInteger(points, 'Positive log-range points');
+    assert(count >= 2 && count <= 4, 'Log ranges require 2–4 positive concentration points.');
+    assert(min < max, 'Log-range minimum must be smaller than the maximum.');
+    const levels = [];
+    if (includeZero) levels.push(0);
+    for (let i = 0; i < count; i++) {
+      // Precision is intentionally bounded for stable source code, CSV and JSON round-trips.
+      const value = i === 0 ? min : i === count - 1 ? max :
+        Number(Math.exp(Math.log(min) + (Math.log(max) - Math.log(min)) * i / (count - 1)).toPrecision(12));
+      levels.push(value);
+    }
+    assert(new Set(levels).size === levels.length, 'Log-range doses collapse to repeated values. Widen the range.');
+    return levels;
+  }
+  function parseReserved(text, format) {
+    const selected = new Set();
+    const str = String(text || '').trim();
+    if (!str) return selected;
+    for (const entry of str.split(/[;,\s]+/).filter(Boolean)) {
+      const parts = entry.split(':');
+      assert(parts.length <= 2, 'Invalid reserved-well range: ' + entry);
+      const first = C.parseWell(parts[0], format);
+      if (parts.length === 1) { selected.add(first.name); continue; }
+      const last = C.parseWell(parts[1], format);
+      for (let r = Math.min(first.row, last.row); r <= Math.max(first.row, last.row); r++) {
+        for (let col = Math.min(first.col, last.col); col <= Math.max(first.col, last.col); col++) selected.add(C.rowName(r) + (col + 1));
+      }
+    }
+    return selected;
+  }
+  function normalizeConfig(raw) {
+    assert(raw && typeof raw === 'object', 'Experimental design configuration is missing.');
+    const mode = String(raw.mode || 'subset');
+    assert(['full', 'subset', 'replicates', 'sparse'].includes(mode), 'Choose full factorial, balanced subset, randomized replicates, or sparse-recovery sampling.');
+    const targetFormat = Number(raw.targetFormat || 96), sourceFormat = Number(raw.sourceFormat || 96);
+    C.formatInfo(targetFormat); assert([96,384].includes(sourceFormat), 'Source plate format must be 96 or 384.');
+    const doseMode = raw.doseMode || 'concentration';
+    assert(['concentration', 'volume'].includes(doseMode), 'Dose mode must be concentration or volume.');
+    // Backwards compatibility: v2/v3 projects did not record a volume basis.
+    const volumeBasis = raw.volumeBasis || 'final';
+    assert(['final', 'starting'].includes(volumeBasis), 'Volume basis must be fixed final volume or fixed starting medium.');
+    const finalVolume = positiveNumber(raw.finalVolume, 'Final volume');
+    const maxWellVolume = raw.maxWellVolume === undefined || raw.maxWellVolume === null || String(raw.maxWellVolume).trim() === ''
+      ? null : positiveNumber(raw.maxWellVolume, 'Maximum destination well volume');
+    const stockMicMultiple = raw.stockMicMultiple === undefined || raw.stockMicMultiple === null || String(raw.stockMicMultiple).trim() === ''
+      ? null : positiveNumber(raw.stockMicMultiple, 'Stock multiple of MIC');
+    const unit = String(raw.unit || 'µM').trim();
+    assert(/^[a-zA-Zµμ/%0-9 ._-]{1,24}$/.test(unit), 'Use a short concentration unit without punctuation or line breaks.');
+    assert(Array.isArray(raw.compounds) && raw.compounds.length >= 1 && raw.compounds.length <= 12, 'Provide 1–12 compounds.');
+    const compounds = raw.compounds.map((item, i) => {
+      const name = C.makeTask({ source: item.source, target: 'A1', volume: 1, liquid: item.name }, sourceFormat, targetFormat).liquid;
+      const source = C.parseWell(item.source, sourceFormat).name;
+      const stock = doseMode === 'concentration' ? positiveNumber(item.stock, name + ' stock concentration') : Number(item.stock) || 1;
+      const doseScheme = String(item.doseScheme || 'manual');
+      assert(['manual', 'log'].includes(doseScheme), name + ': dose scheme must be manual or log.');
+      assert(doseScheme !== 'log' || doseMode === 'concentration', name + ': log ranges require concentration dosing, not direct dispense volumes.');
+      const logMin = doseScheme === 'log' ? positiveNumber(item.logMin, name + ' log minimum') : null;
+      const logMax = doseScheme === 'log' ? positiveNumber(item.logMax, name + ' log maximum') : null;
+      const logPoints = doseScheme === 'log' ? positiveInteger(item.logPoints, name + ' positive log points') : null;
+      const logIncludeZero = doseScheme === 'log' ? item.logIncludeZero !== false && item.logIncludeZero !== 'false' : null;
+      const levels = doseScheme === 'log'
+        ? logSpacedLevels(logMin, logMax, logPoints, logIncludeZero)
+        : parseLevels(item.levels, name);
+      if (doseMode === 'concentration') assert(levels.every(v => v <= stock), name + ': a target concentration exceeds its stock concentration.');
+      else if (volumeBasis === 'final') assert(levels.every(v => v <= finalVolume), name + ': a dispense volume exceeds final volume.');
+      return { name, source, stock, levels, doseScheme, logMin, logMax, logPoints, logIncludeZero };
+    });
+    assert(new Set(compounds.map(c => c.name.toLowerCase())).size === compounds.length, 'Compound names must be unique.');
+    assert(new Set(compounds.map(c => c.source)).size === compounds.length, 'Each compound needs its own source well.');
+    const reserved = [...parseReserved(raw.reserved || '', targetFormat)];
+    const capacity = C.allWells(targetFormat).length - reserved.length;
+    assert(capacity > 0, 'No target wells remain after reserving wells.');
+    const subsetSize = positiveInteger(raw.subsetSize ?? 96, 'Subset size');
+    const uniqueCount = positiveInteger(raw.uniqueCount ?? 24, 'Unique combination count');
+    const replicates = positiveInteger(raw.replicates ?? 3, 'Replicates');
+    const totalPossible = compounds.reduce((n, c) => n * c.levels.length, 1);
+    const sampleCount = mode === 'full' ? totalPossible : ['subset','sparse'].includes(mode) ? subsetSize : uniqueCount * replicates;
+    assert(sampleCount <= 25000, 'This design exceeds 25,000 assignments. Reduce the factorial or split your experiment.');
+    if (mode === 'subset' || mode === 'sparse') assert(subsetSize <= totalPossible, 'A no-replacement subset cannot exceed ' + totalPossible + ' unique combinations.');
+    if (mode === 'replicates') assert(uniqueCount <= totalPossible, 'Unique combinations cannot exceed ' + totalPossible + '.');
+    const rawControls = raw.controls || {};
+    const controls = {
+      untreated: positiveInteger(rawControls.untreated ?? 0, 'Untreated controls per plate', true),
+      vehicle: positiveInteger(rawControls.vehicle ?? 0, 'Vehicle controls per plate', true),
+      reference: positiveInteger(rawControls.reference ?? 0, 'Reference controls per plate', true),
+      vehicleSource: C.parseWell(rawControls.vehicleSource || 'H12', sourceFormat).name,
+      vehicleName: String(rawControls.vehicleName || 'Vehicle').trim(),
+      vehicleVolume: positiveNumber(rawControls.vehicleVolume ?? 0.3, 'Vehicle dispense volume'),
+      referenceCompound: String(rawControls.referenceCompound || '').trim(),
+      referenceDose: rawControls.referenceDose ?? ''
+    };
+    controls.total = controls.untreated + controls.vehicle + controls.reference;
+    assert(controls.total < capacity, 'Controls must leave at least one treatment well on every plate.');
+    assert(controls.total <= 96 || targetFormat !== 96, 'A 96-well plate has at most 96 positions.');
+    if (controls.total) assert(compounds.every(c => c.levels.includes(0)),
+      'Each compound must have a zero level to construct antibiotic-free controls.');
+    if (controls.vehicle) {
+      assert(controls.vehicleName.length > 0 && controls.vehicleName.length <= 120, 'Vehicle liquid name is invalid.');
+      assert(!compounds.some(c => c.source === controls.vehicleSource), 'Vehicle source must differ from antibiotic sources.');
+      assert(!compounds.some(c => c.name.toLowerCase() === controls.vehicleName.toLowerCase()), 'Vehicle name must differ from compound names.');
+    }
+    if (controls.reference) {
+      controls.referenceIndex = compounds.findIndex(c => c.name.toLowerCase() === controls.referenceCompound.toLowerCase());
+      assert(controls.referenceIndex >= 0, 'Reference control compound must match a compound name exactly.');
+      const level = positiveNumber(controls.referenceDose, 'Reference control dose');
+      controls.referenceLevel = compounds[controls.referenceIndex].levels.indexOf(level);
+      assert(controls.referenceLevel >= 0 && level > 0, 'Reference control dose must match a positive level of that compound.');
+    }
+    const perPlateTreatments = capacity - controls.total;
+    assert(Math.ceil(sampleCount / perPlateTreatments) <= 200, 'This design exceeds 200 plates. Change the plate format or reduce the design.');
+    const minTransfer = positiveNumber(raw.minTransfer ?? 0.008, 'Minimum dispense volume');
+    const maxTransfer = positiveNumber(raw.maxTransfer ?? 30, 'Maximum dispense volume');
+    assert(minTransfer <= maxTransfer, 'The minimum transfer must be no larger than the maximum.');
+    const sourceCapacity = positiveNumber(raw.sourceCapacity ?? 80, 'Source-well usable volume', true);
+    if (controls.vehicle) {
+      assert(controls.vehicleVolume >= minTransfer - 1e-12 && controls.vehicleVolume <= maxTransfer + 1e-9,
+        'Vehicle dispense is outside configured instrument volume limits.');
+    }
+    const addDiluent = !!raw.addDiluent;
+    assert(volumeBasis !== 'starting' || !addDiluent,
+      'Fixed starting medium mode must not add a diluent top-up; uncheck Include top-up/diluent.');
+    const diluentSource = C.parseWell(raw.diluentSource || 'H12', sourceFormat).name;
+    const diluentName = C.makeTask({ source: diluentSource, target: 'A1', volume: 1, liquid: raw.diluentName || 'Diluent' }, sourceFormat, targetFormat).liquid;
+    if (addDiluent && controls.vehicle) assert(diluentSource !== controls.vehicleSource, 'Vehicle and diluent must have different sources.');
+    if (addDiluent) {
+      assert(!compounds.some(c => c.source === diluentSource), 'Diluent source well must differ from compound source wells.');
+      assert(!compounds.some(c => c.name.toLowerCase() === diluentName.toLowerCase()), 'Diluent liquid name must differ from compound names.');
+    }
+    return { mode, targetFormat, sourceFormat, doseMode, volumeBasis, finalVolume,
+      maxWellVolume, stockMicMultiple, unit, compounds, reserved: reserved.sort(),
+      subsetSize, uniqueCount, replicates, sampleCount, totalPossible, capacity, controls, perPlateTreatments,
+      seed: String(raw.seed ?? '1701'), addDiluent, diluentSource, diluentName, minTransfer, maxTransfer, sourceCapacity };
+  }
+  function enumerate(compounds) {
+    let results = [[]];
+    for (const comp of compounds) {
+      const next = [];
+      for (const combo of results) for (let level = 0; level < comp.levels.length; level++) next.push([...combo, level]);
+      results = next;
+    }
+    return results.map((indices, i) => ({ id: i + 1, indices }));
+  }
+  function balancedPick(pool, count, compounds, random) {
+    if (count === pool.length) return shuffle(pool.slice(), random);
+    // Greedy minimum imbalance on main-effect levels, with mild pairwise-level coverage weighting.
+    const selected = [], remaining = shuffle(pool.slice(), random);
+    const single = compounds.map(c => Array(c.levels.length).fill(0));
+    const pairs = [];
+    for (let i = 0; i < compounds.length; i++) for (let j = i + 1; j < compounds.length; j++) {
+      pairs.push({ i, j, counts: Array(compounds[i].levels.length * compounds[j].levels.length).fill(0), nJ: compounds[j].levels.length });
+    }
+    for (let n = 0; n < count; n++) {
+      let best = Infinity, choice = -1;
+      // Sampling large pools prevents quadratic runtimes without sacrificing seeded reproducibility.
+      const cap = Math.min(remaining.length, 640);
+      const start = remaining.length <= cap ? 0 : Math.floor(random() * remaining.length);
+      for (let z = 0; z < cap; z++) {
+        const at = (start + z) % remaining.length;
+        const indices = remaining[at].indices;
+        let score = 0;
+        for (let i = 0; i < single.length; i++) score += 2 * single[i][indices[i]] + 1;
+        for (const p of pairs) score += 0.26 * (2 * p.counts[indices[p.i] * p.nJ + indices[p.j]] + 1);
+        if (score < best - 1e-10) { best = score; choice = at; }
+      }
+      const picked = remaining.splice(choice, 1)[0]; selected.push(picked);
+      picked.indices.forEach((index, i) => single[i][index]++);
+      for (const p of pairs) p.counts[picked.indices[p.i] * p.nJ + picked.indices[p.j]]++;
+    }
+    return shuffle(selected, random);
+  }
+  // Heuristic: balance main/pair dose coverage, while discouraging repeatedly
+  // co-activated columns of the prospective sparse-recovery model matrix.
+  // This improves experimental diversity but does NOT prove recovery guarantees.
+  function sparsePick(pool, count, compounds, random) {
+    const remaining = shuffle(pool.slice(),random), selected=[];
+    const levels=compounds.map(c=>Array(c.levels.length).fill(0));
+    const dosePairs=[];
+    for(let i=0;i<compounds.length;i++) for(let j=i+1;j<compounds.length;j++) {
+      dosePairs.push({i,j,nJ:compounds[j].levels.length, counts:Array(compounds[i].levels.length*compounds[j].levels.length).fill(0)});
+    }
+    const features=featureSpec({compounds});
+    const active=new Map(pool.map(c=>[c.id, features.flatMap((f,k)=>
+      c.indices[f.i]===f.j && (f.k===undefined||c.indices[f.k]===f.l) ? [k]:[])]));
+    const fCount=Array(features.length).fill(0);
+    const together=Array.from({length:features.length},()=>new Uint32Array(features.length));
+    for(let n=0;n<count;n++) {
+      const cap=Math.min(remaining.length,640),start=remaining.length<=cap?0:Math.floor(random()*remaining.length);
+      let best=Infinity, choice=-1;
+      for(let z=0;z<cap;z++) {
+        const at=(start+z)%remaining.length, c=remaining[at], a=active.get(c.id);
+        let score=0;
+        for(let i=0;i<compounds.length;i++) score+=2*levels[i][c.indices[i]]+1;
+        for(const x of dosePairs) score+=0.36*(2*x.counts[c.indices[x.i]*x.nJ+c.indices[x.j]]+1);
+        for(let t=0;t<a.length;t++) {
+          score+=0.08*fCount[a[t]];
+          for(let u=t+1;u<a.length;u++) score+=0.012*together[a[t]][a[u]];
+        }
+        if(score<best-1e-10){best=score;choice=at;}
+      }
+      const item=remaining.splice(choice,1)[0], a=active.get(item.id);selected.push(item);
+      item.indices.forEach((v,i)=>levels[i][v]++);
+      for(const x of dosePairs)x.counts[item.indices[x.i]*x.nJ+item.indices[x.j]]++;
+      for(let t=0;t<a.length;t++) {
+        fCount[a[t]]++;
+        for(let u=t+1;u<a.length;u++)together[a[t]][a[u]]++;
+      }
+    }
+    return shuffle(selected,random);
+  }
+  function makeAssignments(config, random) {
+    const pool = enumerate(config.compounds);
+    if (config.mode === 'full') return shuffle(pool, random).map(c => ({ ...c, replicate: 1 }));
+    const count = ['subset','sparse'].includes(config.mode) ? config.subsetSize : config.uniqueCount;
+    const subset = config.mode === 'sparse' ? sparsePick(pool, count, config.compounds, random) : balancedPick(pool, count, config.compounds, random);
+    if (['subset','sparse'].includes(config.mode)) return subset.map(c => ({ ...c, replicate: 1 }));
+    const result = [];
+    for (const c of subset) for (let replicate = 1; replicate <= config.replicates; replicate++) result.push({ ...c, replicate });
+    return shuffle(result, random);
+  }
+  function calculateVolumes(config, indices) {
+    const doses = [], volumes = [];
+    for (let i = 0; i < indices.length; i++) {
+      const comp = config.compounds[i], dose = comp.levels[indices[i]];
+      const volume = config.doseMode === 'concentration' ? dose * config.finalVolume / comp.stock : dose;
+      assert(Number.isFinite(volume), 'Non-finite volume for ' + comp.name);
+      doses.push(dose); volumes.push(volume);
+    }
+    const compoundTotal = volumes.reduce((a, b) => a + b, 0);
+    const startingMedium = config.volumeBasis === 'starting' ? config.finalVolume : 0;
+    if (config.volumeBasis === 'final') {
+      assert(compoundTotal <= config.finalVolume + 1e-9,
+        'Sum of compound volumes (' + C.numberText(compoundTotal) + ' µL) exceeds the final volume (' + config.finalVolume + ' µL). Reduce levels or use more concentrated stocks.');
+    }
+    // In starting-medium mode, the media is already present and MUST NOT be topped up.
+    const topUp = config.volumeBasis === 'starting' ? 0 : Math.max(0, config.finalVolume - compoundTotal);
+    const actualFinalVolume = startingMedium + compoundTotal + topUp;
+    if (config.maxWellVolume !== null) {
+      assert(actualFinalVolume <= config.maxWellVolume + 1e-9,
+        'Expected well volume (' + C.numberText(actualFinalVolume) + ' µL) exceeds the configured physical well limit (' +
+        C.numberText(config.maxWellVolume) + ' µL). Verify the target labware and headspace.');
+    }
+    // Calculated concentrations refer to the final mixture, not just starting media.
+    const actualDoses = config.doseMode === 'concentration'
+      ? config.compounds.map((c, i) => c.stock * volumes[i] / actualFinalVolume) : null;
+    const targetMicMultiples = config.doseMode === 'concentration' && config.stockMicMultiple !== null
+      ? config.compounds.map((c, i) => doses[i] * config.stockMicMultiple / c.stock) : null;
+    const actualMicMultiples = actualDoses && config.stockMicMultiple !== null
+      ? config.compounds.map((c, i) => actualDoses[i] * config.stockMicMultiple / c.stock) : null;
+    return { doses, volumes, compoundTotal, topUp, startingMedium, actualFinalVolume,
+      actualDoses, targetMicMultiples, actualMicMultiples };
+  }
+  function controlEntries(config) {
+    const c = config.controls, out = [];
+    for (const type of ['untreated','vehicle','reference']) {
+      for (let i = 0; i < c[type]; i++) out.push({role:'control', controlType:type, replicate:i+1});
+    }
+    return out;
+  }
+  function generateDesign(raw) {
+    const config = normalizeConfig(raw), random = seededRandom(config.seed);
+    const selected = makeAssignments(config, random);
+    const available = C.allWells(config.targetFormat).filter(w => !config.reserved.includes(w));
+    const plateCount = Math.ceil(selected.length / config.perPlateTreatments);
+    const plates = [], warnings = [];
+    let cursor = 0;
+    for (let index = 0; index < plateCount; index++) {
+      // Mix controls and treatments before assigning any coordinates. No control-only rows.
+      const batch = selected.slice(cursor, cursor + config.perPlateTreatments)
+        .map(x => ({...x, role:'treatment', controlType:''}));
+      cursor += batch.length;
+      batch.push(...controlEntries(config));
+      shuffle(batch, random);
+      const wells = shuffle(available.slice(), random);
+      const assignments = [], tasks = [];
+      for (let n=0; n<batch.length; n++) {
+        const entry = batch[n], well = wells[n], isControl = entry.role === 'control';
+        const zeroIndices = config.compounds.map(c => c.levels.indexOf(0));
+        const indices = !isControl ? entry.indices.slice() : zeroIndices;
+        if (isControl && entry.controlType === 'reference') indices[config.controls.referenceIndex] = config.controls.referenceLevel;
+        const v = calculateVolumes(config, indices);
+        const vehicleVolume = isControl && entry.controlType === 'vehicle' ? config.controls.vehicleVolume : 0;
+        if (vehicleVolume) {
+          if (config.volumeBasis === 'starting') v.actualFinalVolume += vehicleVolume;
+          else {
+            assert(vehicleVolume <= v.topUp + 1e-9, 'Vehicle control exceeds target final assay volume.');
+            v.topUp -= vehicleVolume;
+          }
+          if (config.maxWellVolume !== null) assert(v.actualFinalVolume <= config.maxWellVolume + 1e-9,
+            'Plate ' + (index+1) + ' control '+ well + ': final volume exceeds physical well limit.');
+          tasks.push(C.makeTask({ source:config.controls.vehicleSource, target:well,
+            volume:vehicleVolume, liquid:config.controls.vehicleName }, config.sourceFormat, config.targetFormat));
+        }
+        v.volumes.forEach((volume, i) => {
+          if (volume === 0) return;
+          assert(volume >= config.minTransfer - 1e-12, 'Plate ' + (index+1) + ' ' + well + ': ' + config.compounds[i].name + ' needs ' + C.numberText(volume) + ' µL, below configured minimum ' + config.minTransfer + ' µL. Dilute stock or raise target dose.');
+          assert(volume <= config.maxTransfer + 1e-9, 'Plate ' + (index+1) + ' ' + well + ': ' + config.compounds[i].name + ' exceeds the configured maximum per dispense.');
+          tasks.push(C.makeTask({ source: config.compounds[i].source, target: well, volume, liquid: config.compounds[i].name }, config.sourceFormat, config.targetFormat));
+        });
+        if (config.addDiluent && v.topUp > 1e-10) {
+          assert(v.topUp >= config.minTransfer - 1e-12 && v.topUp <= config.maxTransfer + 1e-9,
+            'Plate ' + (index+1) + ' ' + well + ': diluent volume ' + C.numberText(v.topUp) + ' µL is outside the configured dispense limits.');
+          tasks.push(C.makeTask({ source: config.diluentSource, target: well, volume: v.topUp, liquid: config.diluentName }, config.sourceFormat, config.targetFormat));
+        }
+        assignments.push({ plate:index+1, well, role:entry.role, controlType:entry.controlType,
+          combinationId:isControl ? '' : entry.id, replicate:entry.replicate,
+          indices, doses:v.doses, volumes:v.volumes, vehicleVolume,
+          startingMedium:v.startingMedium, actualFinalVolume:v.actualFinalVolume,
+          actualDoses:v.actualDoses, targetMicMultiples:v.targetMicMultiples,
+          actualMicMultiples:v.actualMicMultiples, compoundTotal:v.compoundTotal,
+          diluentVolume:config.addDiluent ? v.topUp : 0,
+          externalTopUp:config.addDiluent ? 0 : v.topUp, finalVolume:v.actualFinalVolume });
+      }
+      const sourceTotals = C.totals(tasks).sources;
+      if (config.sourceCapacity > 0) for (const [source, dispensed] of Object.entries(sourceTotals)) {
+        assert(dispensed <= config.sourceCapacity + 1e-9,
+          'Plate ' + (index + 1) + ': source ' + source + ' requires ' + C.numberText(dispensed) + ' µL, exceeding the configured ' + config.sourceCapacity + ' µL usable source volume (before dead volume).');
+      }
+      plates.push({ number:index+1, assignments, tasks, reserved:config.reserved.slice() });
+    }
+    if (config.volumeBasis === 'starting') warnings.push('Each well already contains ' + C.numberText(config.finalVolume) +
+      ' µL starting medium. No top-up is generated; check total physical capacity and headspace.');
+    else if (!config.addDiluent) warnings.push('The I.DOT tasks omit external top-ups; add manifest external_top_up_uL separately to reach final volume.');
+    if (config.controls.vehicle) warnings.push('Vehicle controls do not automatically match the solvent carried by every antibiotic stock. Match solvents experimentally.');
+    if (config.mode === 'sparse') warnings.push('Sparse-recovery sampling is a balanced, seeded heuristic, not a guarantee of compressed-sensing recovery. Analyze measured outcomes with a sparsity-regularized model and validate predictions.');
+    if (config.compounds.some(c => c.doseScheme === 'log')) warnings.push('Logarithmic dosing uses discrete geometric concentrations per source, not continuously random concentrations. Generated levels and random assignments are recorded in the manifest.');
+    if (config.sourceCapacity > 0) warnings.push('Source checks exclude priming and dead volume.');
+    return {version:2, config, plates, warnings, summary:summarize(config, plates)};
+  }
+  function summarize(config, plates) {
+    const counts = config.compounds.map(c => c.levels.map(() => 0));
+    const pairCounts = [];
+    for (let i = 0; i < config.compounds.length; i++) for (let j = i + 1; j < config.compounds.length; j++) {
+      pairCounts.push({ a: i, b: j, cells: new Set() });
+    }
+    for (const plate of plates) for (const a of plate.assignments) {
+      if (a.role === 'control') continue;
+      a.indices.forEach((level, i) => counts[i][level]++);
+      for (const p of pairCounts) p.cells.add(a.indices[p.a] + ':' + a.indices[p.b]);
+    }
+    return { plates: plates.length, controls: plates.reduce((n,p)=>n+p.assignments.filter(a=>a.role==='control').length,0),
+      assignedWells: plates.reduce((n,p)=>n+p.assignments.length,0),
+      wells: plates.reduce((n,p)=>n+p.assignments.filter(a=>a.role!=='control').length,0),
+      transfers: plates.reduce((n,p)=>n+p.tasks.length,0), singleLevelCounts: counts,
+      pairCoverage: pairCounts.map(p=>({ a:config.compounds[p.a].name,b:config.compounds[p.b].name,
+        observed:p.cells.size,possible:config.compounds[p.a].levels.length*config.compounds[p.b].levels.length })) };
+  }
+  function manifestCsv(plan) {
+    assert(plan && plan.config && Array.isArray(plan.plates), 'Missing generated design');
+    const cfg = plan.config;
+    const heading = ['plate', 'target_well', 'status', 'combination_id', 'replicate', 'final_volume_uL',
+      'compound_dispense_total_uL', 'diluent_dispense_uL', 'external_top_up_uL'];
+    for (const c of cfg.compounds) {
+      heading.push(c.name + '_dose_' + (cfg.doseMode === 'concentration' ? cfg.unit : 'uL'));
+      heading.push(c.name + '_dispense_uL');
+    }
+    heading.push('volume_basis', 'starting_media_uL', 'actual_final_volume_uL', 'control_type', 'vehicle_dispense_uL');
+    for (const c of cfg.compounds) {
+      heading.push(c.name + '_actual_concentration_' + cfg.unit,
+        c.name + '_target_MIC_multiple', c.name + '_actual_MIC_multiple');
+    }
+    const rows = [heading];
+    for (const plate of plan.plates) {
+      for (const a of plate.assignments.slice().sort((x, y) => {
+        const wx = C.parseWell(x.well, cfg.targetFormat), wy = C.parseWell(y.well, cfg.targetFormat);
+        return wx.row - wy.row || wx.col - wy.col;
+      })) {
+        const row = [a.plate, a.well, a.role === 'control' ? 'control' : 'assigned', a.combinationId, a.replicate, C.numberText(a.finalVolume),
+          C.numberText(a.compoundTotal), C.numberText(a.diluentVolume), C.numberText(a.externalTopUp)];
+        for (let i = 0; i < cfg.compounds.length; i++) row.push(C.numberText(a.doses[i]), C.numberText(a.volumes[i]));
+        row.push(cfg.volumeBasis, C.numberText(a.startingMedium), C.numberText(a.actualFinalVolume), a.controlType || '', C.numberText(a.vehicleVolume || 0));
+        for (let i = 0; i < cfg.compounds.length; i++) {
+          row.push(a.actualDoses ? C.numberText(a.actualDoses[i]) : '',
+            a.targetMicMultiples ? C.numberText(a.targetMicMultiples[i]) : '',
+            a.actualMicMultiples ? C.numberText(a.actualMicMultiples[i]) : '');
+        }
+        rows.push(row);
+      }
+      for (const well of plate.reserved) {
+        rows.push([plate.number, well, 'reserved', '', '', '', '', '', '',
+          ...cfg.compounds.flatMap(() => ['', '']),
+          cfg.volumeBasis, cfg.volumeBasis === 'starting' ? C.numberText(cfg.finalVolume) : '',
+          cfg.volumeBasis === 'starting' ? C.numberText(cfg.finalVolume) : '', '', '',
+          ...cfg.compounds.flatMap(() => ['', '', ''])]);
+      }
+    }
+    return C.csvRows(rows);
+  }
+  function sourceMapCsv(plan) {
+    const rows = [['plate', 'source_well', 'liquid_name', 'stock_concentration', 'concentration_unit', 'required_dispense_uL', 'estimated_prep_uL_5pct_plus_1uL']];
+    for (const plate of plan.plates) {
+      const totals = C.totals(plate.tasks).sources;
+      for (const comp of plan.config.compounds) rows.push([plate.number, comp.source, comp.name, plan.config.doseMode === 'concentration' ? C.numberText(comp.stock) : '',
+        plan.config.doseMode === 'concentration' ? plan.config.unit : '', C.numberText(totals[comp.source] || 0), C.numberText((totals[comp.source] || 0) * 1.05 + 1)]);
+      if (plan.config.controls && plan.config.controls.vehicle) rows.push([plate.number, plan.config.controls.vehicleSource,
+        plan.config.controls.vehicleName, '', '', C.numberText(totals[plan.config.controls.vehicleSource] || 0),
+        C.numberText((totals[plan.config.controls.vehicleSource] || 0) * 1.05 + 1)]);
+      if (plan.config.addDiluent) rows.push([plate.number, plan.config.diluentSource, plan.config.diluentName, '', '',
+        C.numberText(totals[plan.config.diluentSource] || 0), C.numberText((totals[plan.config.diluentSource] || 0) * 1.05 + 1)]);
+    }
+    return C.csvRows(rows);
+  }
+  function featureSpec(cfg) {
+    const entries = [];
+    for (let i=0;i<cfg.compounds.length;i++) for (let j=0;j<cfg.compounds[i].levels.length;j++) {
+      if (cfg.compounds[i].levels[j] !== 0) entries.push({name:'main__'+i+'__'+j, i, j});
+    }
+    for (let i=0;i<cfg.compounds.length;i++) for (let k=i+1;k<cfg.compounds.length;k++) {
+      for (let j=0;j<cfg.compounds[i].levels.length;j++) for (let l=0;l<cfg.compounds[k].levels.length;l++) {
+        if (cfg.compounds[i].levels[j] !== 0 && cfg.compounds[k].levels[l] !== 0)
+          entries.push({name:'pair__'+i+'__'+j+'__'+k+'__'+l,i,j,k,l});
+      }
+    }
+    return entries;
+  }
+  function featureMatrixCsv(plan) {
+    const spec=featureSpec(plan.config), rows=[['plate','well','status','control_type','combination_id','replicate',
+      ...spec.map(x=>x.name)]];
+    for(const plate of plan.plates) for(const a of plate.assignments) {
+      rows.push([a.plate,a.well,a.role==='control'?'control':'treatment',a.controlType||'',a.combinationId,a.replicate,
+        ...spec.map(x => (a.indices[x.i]===x.j && (x.k===undefined || a.indices[x.k]===x.l))?1:0)]);
+    }
+    return C.csvRows(rows);
+  }
+  function featureLegendCsv(plan) {
+    const cfg=plan.config;
+    const rows=[['feature','feature_type','compound_1','level_1','compound_2','level_2','dose_unit']];
+    for(const f of featureSpec(cfg)) rows.push([f.name,f.k===undefined?'main':'pair',
+      cfg.compounds[f.i].name,C.numberText(cfg.compounds[f.i].levels[f.j]),
+      f.k===undefined?'':cfg.compounds[f.k].name,
+      f.k===undefined?'':C.numberText(cfg.compounds[f.k].levels[f.l]),
+      cfg.doseMode==='concentration'?cfg.unit:'µL']);
+    return C.csvRows(rows);
+  }
+  function measurementsTemplateCsv(plan) {
+    const rows=[['plate','well','status','control_type','combination_id','replicate','response']];
+    for(const plate of plan.plates) for(const a of plate.assignments) rows.push([a.plate,a.well,
+      a.role==='control'?'control':'treatment',a.controlType||'',a.combinationId,a.replicate,'']);
+    return C.csvRows(rows);
+  }
+  function defaultConfig() {
+    return { mode: 'subset', targetFormat: 96, sourceFormat: 96, doseMode: 'concentration',
+      volumeBasis: 'final', finalVolume: 20, maxWellVolume: null, stockMicMultiple: null, unit: 'µM',
+      compounds: Array.from({length:6}, (_,i)=>({ name:'Compound_'+String.fromCharCode(65+i), source:'A'+(i+1), stock:1000, levels:[0,1,5] })),
+      reserved: '', subsetSize: 96, uniqueCount: 24, replicates: 3, seed: '1701',
+      controls:{untreated:0,vehicle:0,reference:0,vehicleSource:'H12',vehicleName:'Vehicle',vehicleVolume:0.3,referenceCompound:'',referenceDose:''},
+      addDiluent: false, diluentSource: 'H12', diluentName: 'Diluent', minTransfer: 0.008, maxTransfer: 30, sourceCapacity: 80 };
+  }
+  return { seededRandom, shuffle, parseLevels, logSpacedLevels, parseReserved, normalizeConfig, enumerate, balancedPick, sparsePick,
+    calculateVolumes, generateDesign, manifestCsv, sourceMapCsv, featureMatrixCsv, featureLegendCsv, measurementsTemplateCsv, defaultConfig };
+});
+
+</script>
+<script>
+/* Dependency-free ZIP writer: UTF-8, STORE method, files under 4 GiB. */
+(function(root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  root.IDotZip = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function() {
+  'use strict';
+  const encoder = new TextEncoder();
+  const crcTable = Array.from({length:256}, (_, i) => {
+    let n = i;
+    for (let k = 0; k < 8; k++) n = (n & 1) ? 0xEDB88320 ^ (n >>> 1) : (n >>> 1);
+    return n >>> 0;
+  });
+  function crc32(data) {
+    let crc = 0xFFFFFFFF;
+    for (const b of data) crc = crcTable[(crc ^ b) & 255] ^ (crc >>> 8);
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+  function write16(data, offset, n) { data[offset] = n & 255; data[offset+1] = (n >>> 8) & 255; }
+  function write32(data, offset, n) { write16(data, offset, n); write16(data, offset+2, n >>> 16); }
+  function zipFiles(entries) {
+    if (!Array.isArray(entries) || entries.length === 0 || entries.length > 1000) throw new Error('ZIP requires 1–1000 files.');
+    const chunks = [], central = [];
+    let offset = 0;
+    for (const entry of entries) {
+      const name = String(entry.name);
+      if (!name || name.startsWith('/') || name.includes('..') || /[\\\r\n]/.test(name)) throw new Error('Invalid ZIP entry name');
+      const nameBytes = encoder.encode(name), data = encoder.encode(String(entry.content));
+      const crc = crc32(data);
+      const local = new Uint8Array(30 + nameBytes.length);
+      write32(local, 0, 0x04034b50); write16(local, 4, 20); write16(local, 6, 0x0800);
+      write16(local, 8, 0); write32(local, 14, crc); write32(local, 18, data.length); write32(local, 22, data.length);
+      write16(local, 26, nameBytes.length); local.set(nameBytes, 30);
+      chunks.push(local, data);
+      const record = new Uint8Array(46 + nameBytes.length);
+      write32(record, 0, 0x02014b50); write16(record, 4, 20); write16(record, 6, 20);
+      write16(record, 8, 0x0800); write32(record, 16, crc); write32(record, 20, data.length);
+      write32(record, 24, data.length); write16(record, 28, nameBytes.length); write32(record, 42, offset);
+      record.set(nameBytes, 46); central.push(record);
+      offset += local.length + data.length;
+    }
+    const centralOffset = offset, centralSize = central.reduce((n,r)=>n+r.length,0);
+    const end = new Uint8Array(22);
+    write32(end, 0, 0x06054b50); write16(end, 8, entries.length); write16(end, 10, entries.length);
+    write32(end, 12, centralSize); write32(end, 16, centralOffset);
+    return new Blob([...chunks, ...central, end], { type: 'application/zip' });
+  }
+  return { crc32, zipFiles };
+});
+
+</script>
+<script>
+/* Browser-only UI. No network requests, cookies, or runtime dependencies. */
+(function () {
+  'use strict';
+  const C = window.IDotCore, V = window.IDotV23, D = window.IDotDesign, Z = window.IDotZip;
+  const $ = id => document.getElementById(id);
+  const state = { name: 'My_I.DOT_Protocol', sourceFormat: 96, targetFormat: 96, capacity: '',
+    tasks: [], selected: new Set(), lastClicked: null, template: null, example: false,
+    plan: null, importedPlates: null, activePlate: 0 };
+
+  function announce(message, level) {
+    const node = $('alert'); node.textContent = message; node.hidden = false;
+    node.className = 'alert' + (level ? ' ' + level : '');
+  }
+  function errorMessage(err) { announce(err instanceof Error ? err.message : String(err), 'error'); }
+  function download(name, text, type) {
+    const blob = new Blob([text], { type: type || 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob); const link = document.createElement('a');
+    link.href = url; link.download = name; document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+  function downloadFile(name, blob) {
+    const url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = url; link.download = name; document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+  function slug(value) { return String(value || 'idot_protocol').trim().replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 90) || 'idot_protocol'; }
+  function humanNumber(value) { return Number(C.numberText(value)).toLocaleString(undefined, { maximumFractionDigits: 8 }); }
+  function getValidation() {
+    const tasks = C.validateTasks(state.tasks, state.sourceFormat, state.targetFormat, state.capacity);
+    const template = V.validateTemplate(state.template, state.targetFormat, state.sourceFormat);
+    return { tasks, template };
+  }
+  function readInstrumentSettings() {
+    return { sourcePlate: $('idot-source-plate').value, sourcePlateType: $('idot-source-type').value,
+      liquidClass: $('idot-liquid-class').value, additional: $('idot-additional').value,
+      wasteWell: $('idot-waste-well').value };
+  }
+  function writeInstrumentSettings(template) {
+    if (!template || !template.defaults) return;
+    const d = template.defaults;
+    for (const [id, field] of [['idot-source-plate','sourcePlate'],['idot-source-type','sourcePlateType'],
+      ['idot-liquid-class','liquidClass'],['idot-waste-well','wasteWell']]) {
+      $(id).value = d[field] || '';
+    }
+    $('idot-additional').value = '0'; // Never inherit source overheads for unrelated new liquids.
+  }
+  function currentPlates() { return state.plan ? state.plan.plates : state.importedPlates; }
+  function storeImportedPlate() {
+    if (state.importedPlates && state.importedPlates[state.activePlate])
+      state.importedPlates[state.activePlate].tasks = state.tasks;
+  }
+  function getSelectedSorted() {
+    return [...state.selected].sort((a, b) => {
+      const x = C.parseWell(a, state.targetFormat), y = C.parseWell(b, state.targetFormat);
+      return x.row - y.row || x.col - y.col;
+    });
+  }
+  function selectRect(from, to) {
+    const a = C.parseWell(from, state.targetFormat), b = C.parseWell(to, state.targetFormat);
+    for (let r = Math.min(a.row, b.row); r <= Math.max(a.row, b.row); r++) {
+      for (let c = Math.min(a.col, b.col); c <= Math.max(a.col, b.col); c++) state.selected.add(C.rowName(r) + (c + 1));
+    }
+  }
+  function handleWellClick(name, shiftKey) {
+    if (shiftKey && state.lastClicked) selectRect(state.lastClicked, name);
+    else if (state.selected.has(name)) state.selected.delete(name);
+    else state.selected.add(name);
+    state.lastClicked = name;
+    render();
+  }
+  function buildPlate(container, format, mode, values) {
+    const { rows, cols } = C.formatInfo(format);
+    container.replaceChildren();
+    container.dataset.format = String(format);
+    container.style.setProperty('--rows', rows);
+    container.style.setProperty('--cols', cols);
+    const fragment = document.createDocumentFragment();
+    const corner = document.createElement('span'); corner.className = 'axis-label'; fragment.appendChild(corner);
+    for (let c = 1; c <= cols; c++) { const label = document.createElement('span'); label.className = 'axis-label'; label.textContent = String(c); fragment.appendChild(label); }
+    const max = Math.max(0.001, ...Object.values(values));
+    const assignments = mode === 'target' && state.plan ? new Map(state.plan.plates[state.activePlate].assignments.map(x => [x.well, x])) : null;
+    const reserved = mode === 'target' && state.plan ? new Set(state.plan.plates[state.activePlate].reserved) : null;
+    for (let r = 0; r < rows; r++) {
+      const label = document.createElement('span'); label.className = 'axis-label'; label.textContent = C.rowName(r); fragment.appendChild(label);
+      for (let c = 1; c <= cols; c++) {
+        const well = C.rowName(r) + c;
+        const volume = values[well] || 0;
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'well'; button.dataset.well = well;
+        button.textContent = well;
+        button.setAttribute('aria-label', (mode === 'target' ? 'Target ' : 'Source ') + well + (volume ? ', ' + C.numberText(volume) + ' microliters' : ', empty'));
+        if (volume) {
+          button.classList.add('filled');
+          const strength = 0.23 + 0.58 * Math.sqrt(volume / max);
+          button.style.setProperty('--fill', 'rgba(167, 91, 219, ' + strength.toFixed(3) + ')');
+        }
+        if (assignments) {
+          const assignment = assignments.get(well);
+          if (assignment) {
+            const activeCount = assignment.doses.filter(d => d > 0).length;
+            if (assignment.role === 'control') button.classList.add('control');
+            button.classList.add(activeCount === 0 ? 'assigned-zero' : 'generated');
+            if (activeCount > 0) {
+              const hues = [0, 205, 192, 165, 280, 325, 23];
+              button.style.setProperty('--fill', 'hsla(' + hues[activeCount] + ', 69%, 81%, .90)');
+              button.classList.add('filled');
+            }
+            const doses = state.plan.config.compounds.map((c,i)=> c.name + ': ' + C.numberText(assignment.doses[i])).join(' · ');
+            button.title = well + ' · combination #' + assignment.combinationId + ' · replicate ' + assignment.replicate + ' · ' + doses;
+            button.setAttribute('aria-label', assignment.role === 'control' ? well + ', ' + assignment.controlType + ' control' : well + ' · assigned combination ' + assignment.combinationId);
+          } else if (reserved.has(well)) {
+            button.classList.add('reserved'); button.title = well + ' · reserved / no compound assignment';
+            button.setAttribute('aria-label', well + ', reserved');
+          }
+        }
+        if (mode === 'target') {
+          if (state.selected.has(well)) button.classList.add('selected');
+          button.setAttribute('aria-pressed', String(state.selected.has(well)));
+        } else if ($('source-well').value.trim().toUpperCase() === well) button.classList.add('source-active');
+        if (!(assignments && assignments.has(well))) button.title = well + (volume ? ' · ' + humanNumber(volume) + ' µL' : ' · empty');
+        fragment.appendChild(button);
+      }
+    }
+    container.appendChild(fragment);
+  }
+  function renderWellDetails() {
+    const root = $('well-details'); root.replaceChildren();
+    const names = getSelectedSorted();
+    $('selected-count').textContent = names.length + ' selected';
+    $('selected-summary').textContent = names.length ? names.length + ' target well' + (names.length > 1 ? 's' : '') : 'Choose target wells';
+    if (!names.length) { root.textContent = 'Select one or more target wells to review their planned steps.'; return; }
+    for (const name of names.slice(0, 8)) {
+      const items = state.tasks.filter(t => t.target === name);
+      const assignment = state.plan && state.plan.plates[state.activePlate].assignments.find(x => x.well === name);
+      const h = document.createElement('h4');
+      h.textContent = name + ' · ' + humanNumber(items.reduce((n, t) => n + t.volume, 0)) + ' µL'; root.appendChild(h);
+      if (assignment) {
+        const entry = document.createElement('div'); entry.className = 'design-warning';
+        entry.textContent = (assignment.role === 'control' ? assignment.controlType + ' control' : 'Combination #' + assignment.combinationId) + ', replicate ' + assignment.replicate +
+          (state.plan.config.volumeBasis === 'starting'
+            ? ' · prefilled medium ' + humanNumber(assignment.startingMedium) + ' µL' +
+              ' · total after additions ' + humanNumber(assignment.actualFinalVolume) + ' µL'
+            : ' · external top-up ' + humanNumber(assignment.externalTopUp) + ' µL');
+        root.appendChild(entry);
+        const details = document.createElement('div'); details.className = 'muted';
+        details.textContent = state.plan.config.compounds.map((c,i)=> c.name + ': ' + C.numberText(assignment.doses[i]) +
+          (state.plan.config.doseMode === 'concentration' ? ' ' + state.plan.config.unit : ' µL') +
+          (assignment.actualMicMultiples ? ' → ' + C.numberText(assignment.actualMicMultiples[i]) + '× MIC actual' : '')).join(' · ');
+        root.appendChild(details);
+      } else if (state.plan && state.plan.plates[state.activePlate].reserved.includes(name)) {
+        const details = document.createElement('div'); details.className = 'muted'; details.textContent = 'Reserved well — no automated treatment assignment'; root.appendChild(details);
+      }
+      if (!items.length) { const empty = document.createElement('div'); empty.textContent = 'No steps'; root.appendChild(empty); }
+      for (const task of items) {
+        const row = document.createElement('div'); row.className = 'detail-row';
+        const liquid = document.createElement('span'); liquid.textContent = task.liquid + ' from ' + task.source;
+        const volume = document.createElement('b'); volume.textContent = C.numberText(task.volume) + ' µL';
+        row.append(liquid, volume); root.appendChild(row);
+      }
+    }
+    if (names.length > 8) {
+      const more = document.createElement('div'); more.textContent = '+ ' + (names.length - 8) + ' more selected wells'; root.appendChild(more);
+    }
+  }
+  function renderSources(sourceTotals) {
+    const root = $('source-table'); root.replaceChildren();
+    const entries = Object.entries(sourceTotals).sort((a, b) => {
+      const x = C.parseWell(a[0], state.sourceFormat), y = C.parseWell(b[0], state.sourceFormat);
+      return x.row - y.row || x.col - y.col;
+    });
+    if (!entries.length) { root.textContent = 'No source wells in use.'; return; }
+    const table = document.createElement('table'); table.className = 'compact-table';
+    const head = document.createElement('thead'); head.innerHTML = '<tr><th>Source well</th><th>Dispense total</th><th>Preparation estimate</th></tr>'; table.appendChild(head);
+    const body = document.createElement('tbody');
+    for (const [well, total] of entries) {
+      const tr = document.createElement('tr');
+      const estimate = $('source-overhead').checked ? total * 1.05 + 1 : total;
+      for (const label of [well, humanNumber(total) + ' µL', humanNumber(estimate) + ' µL']) {
+        const td = document.createElement('td'); td.textContent = label; tr.appendChild(td);
+      }
+      body.appendChild(tr);
+    }
+    table.appendChild(body); root.appendChild(table);
+  }
+  function renderValidation(validation) {
+    const root = $('validation'); root.replaceChildren();
+    const errs = validation.tasks.errors; const warns = [...validation.tasks.warnings, ...validation.template.warnings];
+    const ready = errs.length === 0;
+    const badge = $('valid-badge'); badge.className = 'status-chip' + (ready ? ' ok' : '');
+    badge.textContent = ready ? 'Tasks valid' : 'Review tasks';
+    if (ready) { const p = document.createElement('div'); p.className = 'ok'; p.textContent = 'Task-list CSV is ready to download.'; root.appendChild(p); }
+    const renderMessages = (arr, cls) => {
+      if (!arr.length) return;
+      const list = document.createElement('ul'); list.className = cls;
+      for (const message of arr.slice(0, 12)) { const li = document.createElement('li'); li.textContent = message; list.appendChild(li); }
+      if (arr.length > 12) { const li = document.createElement('li'); li.textContent = (arr.length - 12) + ' additional issues'; list.appendChild(li); }
+      root.appendChild(list);
+    };
+    renderMessages(errs, 'err');
+    if (!state.template) {
+      const p = document.createElement('p'); p.className = 'warn'; p.textContent = 'Import an Assay Studio CSV for full-protocol export.'; root.appendChild(p);
+    } else renderMessages(validation.template.errors, 'err');
+    renderMessages(warns, 'warn');
+    $('export-list').disabled = !ready;
+    $('export-manifest').disabled = !state.plan;
+    $('export-matrix').disabled = !state.plan;
+    $('export-responses').disabled = !state.plan;
+    $('export-batch').disabled = !state.plan;
+    $('export-protocol').disabled = !ready || !!validation.template.errors.length;
+    const plateGroup = currentPlates();
+    $('export-all-protocol').disabled = !plateGroup || !!validation.template.errors.length ||
+      plateGroup.some(p => C.validateTasks(p.tasks, state.sourceFormat, state.targetFormat, state.capacity).errors.length > 0);
+  }
+  function render() {
+    const totals = C.totals(state.tasks), validation = getValidation();
+    buildPlate($('plate-grid'), state.targetFormat, 'target', totals.targets);
+    buildPlate($('source-grid'), state.sourceFormat, 'source', totals.sources);
+    $('step-count').textContent = totals.stepCount.toLocaleString();
+    $('summary-steps').textContent = totals.stepCount.toLocaleString();
+    $('summary-targets').textContent = totals.targetCount.toLocaleString();
+    $('summary-total').textContent = humanNumber(totals.total) + ' µL';
+    $('target-count').textContent = state.plan ?
+      state.plan.plates[state.activePlate].assignments.filter(a=>a.role!=='control').length + ' treatments · ' +
+      state.plan.plates[state.activePlate].assignments.filter(a=>a.role==='control').length + ' controls' +
+        (state.plan.plates[state.activePlate].reserved.length ? ' · ' + state.plan.plates[state.activePlate].reserved.length + ' reserved' : '') :
+      totals.targetCount + ' filled wells';
+    $('source-count').textContent = totals.sourceCount + ' used wells';
+    $('template-status').textContent = state.template ? 'Assay Studio ' + (state.template.softwareVersion || 'unknown') + ' · ' + (state.template.plateLabel || 'unknown target') + ' · 16-column CSV' : 'No 2.3.x instrument CSV template loaded';
+    renderWellDetails(); renderSources(totals.sources); renderValidation(validation);
+    renderPlateNavigation();
+    const locked = !!state.plan;
+    for (const id of ['source-well', 'dispense-volume', 'liquid-name', 'apply-mode', 'apply', 'remove-selected']) $(id).disabled = locked;
+    $('clear-design').disabled = !locked;
+    $('design-status').textContent = locked ? 'Generated · ' + state.plan.summary.plates + ' plate(s) · ' +
+      state.plan.summary.wells + ' treatments + ' + state.plan.summary.controls + ' controls. Manual editor locked until design is cleared.' : 'No randomized design generated yet.';
+    try {
+      const preview = state.template && !validation.template.errors.length && !validation.tasks.errors.length
+        ? V.exportProtocol(state.tasks, state.template, state.name, state.sourceFormat, state.targetFormat,
+            { plateNumber: state.plan ? state.activePlate + 1 : (state.importedPlates ? state.importedPlates[state.activePlate].number : 1), settings: readInstrumentSettings() })
+        : state.tasks.length ? C.exportTaskCsv(state.tasks, state.sourceFormat, state.targetFormat) : '';
+      $('csv-preview').textContent = preview ? preview.split(/\r?\n/).slice(0, 14).join('\n') : 'Add valid transfers to preview CSV.';
+    } catch (_) { $('csv-preview').textContent = 'Resolve validation issues to preview the export.'; }
+  }
+  function setFormats(format, kind) {
+    if (state.plan || state.importedPlates) {
+      $(kind === 'targetFormat' ? 'target-format' : 'source-format').value = String(state[kind]);
+      return announce('Plate formats are locked while a generated design or multi-plate import is active. Import a new template or load an example to switch formats.', 'error');
+    }
+    const old = state[kind];
+    const next = Number(format);
+    try {
+      for (const task of state.tasks) C.parseWell(kind === 'targetFormat' ? task.target : task.source, next);
+      state[kind] = next;
+      if (kind === 'targetFormat') {
+        state.selected = new Set([...state.selected].filter(w => { try { C.parseWell(w, next); return true; } catch (_) { return false; } }));
+        state.lastClicked = null;
+      }
+    } catch (_) {
+      $(kind === 'targetFormat' ? 'target-format' : 'source-format').value = String(old);
+      announce('Cannot change plate format: existing transfers would refer to wells outside the new plate. Clear those steps first.', 'error');
+    }
+    render();
+  }
+  function applyTransfers() {
+    try {
+      if (state.plan) throw new Error('Generated design is locked. Return to manual editor before adding steps.');
+      const targets = getSelectedSorted();
+      if (!targets.length) throw new Error('Select at least one target well.');
+      const prototype = { source: $('source-well').value, target: targets[0], volume: $('dispense-volume').value, liquid: $('liquid-name').value };
+      C.makeTask(prototype, state.sourceFormat, state.targetFormat);
+      const mode = $('apply-mode').value;
+      if (mode === 'replace') state.tasks = state.tasks.filter(t => !state.selected.has(t.target));
+      for (const target of targets) state.tasks.push(C.makeTask({ ...prototype, target }, state.sourceFormat, state.targetFormat));
+      state.example = false; storeImportedPlate();
+      render(); announce('Added ' + targets.length + ' dispensing step' + (targets.length === 1 ? '' : 's') + '.', 'success');
+    } catch (err) { errorMessage(err); }
+  }
+  function removeSelected() {
+    if (state.plan) return announce('Generated design is locked. Return to manual editor to edit manually.', 'error');
+    if (!state.selected.size) return announce('Select the target wells you want to clear.', 'error');
+    const before = state.tasks.length;
+    state.tasks = state.tasks.filter(t => !state.selected.has(t.target));
+    storeImportedPlate(); render(); announce('Removed ' + (before - state.tasks.length) + ' step(s) from selected wells.', 'success');
+  }
+  async function decodeTextFile(file) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder('utf-16le').decode(bytes);
+    if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder('utf-16be').decode(bytes);
+    try { return new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+    catch (_) { return new TextDecoder('windows-1252').decode(bytes); }
+  }
+  async function readFile(input, action) {
+    const file = input.files && input.files[0]; if (!file) return;
+    try { await action(await decodeTextFile(file)); }
+    catch (err) { errorMessage(err); }
+    finally { input.value = ''; }
+  }
+  function importTaskData(text, requireTemplate) {
+    const isInstrument = V.isProtocol(text);
+    if (requireTemplate && !isInstrument) throw new Error('Expected an Assay Studio 2.3.x CSV with sep=, and the 16-column row-five table header.');
+    if (!requireTemplate && isInstrument) throw new Error('Use “Import Assay Studio CSV” for full 16-column protocols.');
+    const parsed = isInstrument ? V.importProtocol(text, state.sourceFormat) : C.importCsv(text, state.sourceFormat, state.targetFormat);
+    if (state.plan && parsed.template) {
+      state.template = parsed.template; writeInstrumentSettings(parsed.template);
+      render(); announce('2.3.x instrument template loaded. Generated randomized plate assignments were preserved; the imported dispensing rows were not applied.', 'success');
+      return;
+    }
+    if (parsed.template) {
+      state.template = parsed.template;
+      state.targetFormat = parsed.targetFormat; state.sourceFormat = parsed.sourceFormat;
+      $('target-format').value = String(state.targetFormat);
+      $('source-format').value = String(state.sourceFormat);
+      writeInstrumentSettings(parsed.template);
+      state.name = parsed.originalName; $('protocol-name').value = state.name;
+    }
+    state.plan = null; state.activePlate = 0;
+    state.importedPlates = parsed.plates && parsed.plates.length > 1 ? parsed.plates : null;
+    state.tasks = state.importedPlates ? state.importedPlates[0].tasks : parsed.tasks;
+    state.selected.clear(); state.example = false;
+    render(); renderDesignSummary();
+    announce('Imported ' + parsed.tasks.length + ' transfer(s)' +
+      (parsed.plates ? ' across ' + parsed.plates.length + ' target plate(s), with 2.3.x metadata preserved.' : '.'), 'success');
+  }
+  function saveProject() {
+    const data = { formatVersion: 3, name: state.name, sourceFormat: state.sourceFormat, targetFormat: state.targetFormat,
+      capacity: state.capacity, tasks: state.tasks, template: state.template, plan: state.plan, importedPlates: state.importedPlates,
+      instrumentSettings: readInstrumentSettings(), activePlate: state.activePlate };
+    download(slug(state.name) + '.json', JSON.stringify(data, null, 2) + '\n', 'application/json;charset=utf-8');
+  }
+  function savedFieldsMatch(saved, generated) {
+    if (Array.isArray(saved)) return Array.isArray(generated) && saved.length === generated.length &&
+      saved.every((item, i) => savedFieldsMatch(item, generated[i]));
+    if (saved !== null && typeof saved === 'object') return generated !== null && typeof generated === 'object' &&
+      Object.keys(saved).every(key => Object.prototype.hasOwnProperty.call(generated, key) &&
+        savedFieldsMatch(saved[key], generated[key]));
+    return Object.is(saved, generated);
+  }
+  function loadProject(text) {
+    const project = JSON.parse(text);
+    if (!project || ![1,2,3].includes(project.formatVersion) || !Array.isArray(project.tasks)) throw new Error('Not a Plate Studio project JSON file');
+    C.formatInfo(project.sourceFormat); C.formatInfo(project.targetFormat);
+    const tasks = project.tasks.map(task => ({ ...C.makeTask(task, project.sourceFormat, project.targetFormat),
+      ...(project.formatVersion === 3 ? { idot: task.idot, targetPlate: task.targetPlate } : {}) }));
+    state.name = String(project.name || 'Imported_Protocol');
+    state.sourceFormat = Number(project.sourceFormat); state.targetFormat = Number(project.targetFormat);
+    if (![96,384].includes(state.sourceFormat)) throw new Error('Project source format must be 96 or 384');
+    state.capacity = project.capacity === undefined ? '' : String(project.capacity);
+    state.tasks = tasks; state.template = project.template || null;
+    state.plan = null; state.importedPlates = null; state.activePlate = 0;
+    if (project.formatVersion >= 2 && project.plan) {
+      const regenerated = D.generateDesign(project.plan.config);
+      // Older v3 JSON lacks the new v3.1 derived concentration fields. Compare all saved
+      // properties recursively against regenerated values to keep legacy projects loadable.
+      if (!savedFieldsMatch(project.plan.plates, regenerated.plates)) {
+        throw new Error('Saved design differs from deterministic regeneration. Project cannot be opened safely.');
+      }
+      state.plan = regenerated;
+      state.activePlate = Math.min(Math.max(0, Number(project.activePlate) || 0), regenerated.plates.length - 1);
+      state.tasks = regenerated.plates[state.activePlate].tasks;
+      writeDesignForm(regenerated.config);
+    }
+    if (project.formatVersion === 3 && Array.isArray(project.importedPlates)) {
+      state.importedPlates = project.importedPlates.map(plate => ({ number: plate.number,
+        tasks: plate.tasks.map(task => ({ ...C.makeTask(task, state.sourceFormat, state.targetFormat), idot: task.idot, targetPlate: task.targetPlate })) }));
+      state.activePlate = Math.min(Math.max(0, Number(project.activePlate) || 0), state.importedPlates.length - 1);
+      state.tasks = state.importedPlates[state.activePlate].tasks;
+    }
+    if (project.instrumentSettings) {
+      for (const [id,field] of [['idot-source-plate','sourcePlate'],['idot-source-type','sourcePlateType'],
+        ['idot-liquid-class','liquidClass'],['idot-additional','additional'],['idot-waste-well','wasteWell']])
+        if (project.instrumentSettings[field] !== undefined) $(id).value = project.instrumentSettings[field];
+    } else if (state.template && state.template.kind === 'idot-v23') writeInstrumentSettings(state.template);
+    state.selected.clear(); state.example = false;
+    $('protocol-name').value = state.name; $('source-format').value = String(state.sourceFormat);
+    $('target-format').value = String(state.targetFormat); $('capacity').value = state.capacity;
+    render(); renderDesignSummary(); announce('Project loaded. Confirm target plate, source plate, and liquid classes before export.', 'success');
+  }
+  function loadDemo() {
+    state.name = 'EXAMPLE_NOT_FOR_INSTRUMENT'; state.sourceFormat = 96; state.targetFormat = 96;
+    state.capacity = ''; state.template = null; state.plan = null; state.importedPlates = null; state.activePlate = 0;
+    state.selected = new Set(['A1', 'A2', 'A3', 'A4']);
+    state.tasks = [
+      ...['A1','A2','A3','A4'].map((target, i) => C.makeTask({ source: 'A1', target, volume: [0.25,0.5,0.75,1][i], liquid:'Example_A' }, 96, 96)),
+      ...['A1','A2','A3','A4'].map(target => C.makeTask({ source: 'A2', target, volume: 0.1, liquid:'Example_B' }, 96, 96))
+    ];
+    state.example = true;
+    $('protocol-name').value = state.name; $('source-format').value = '96'; $('target-format').value = '96'; $('capacity').value = '';
+    $('liquid-name').value = 'Example_A'; render(); renderDesignSummary();
+    announce('Synthetic example loaded. Replace the example liquids and transfer volumes with your validated experimental values.', 'success');
+  }
+  function renderCompoundRows(compounds) {
+    const body = $('compound-rows'); body.replaceChildren();
+    for (const item of compounds) {
+      const tr = document.createElement('tr');
+      for (const [key, value] of [['name',item.name], ['source',item.source], ['stock',item.stock]]) {
+        const td = document.createElement('td'), input = document.createElement('input');
+        input.className = 'compound-' + key;
+        input.setAttribute('aria-label', key + ' for ' + item.name);
+        input.value = value;
+        if (key === 'stock') { input.type = 'number'; input.min = '0'; input.step = 'any'; }
+        input.spellcheck = false;
+        td.appendChild(input); tr.appendChild(td);
+      }
+      const schemeCell = document.createElement('td'), scheme = document.createElement('select');
+      scheme.className = 'compound-dose-scheme';
+      scheme.setAttribute('aria-label', 'Dose scheme for ' + item.name);
+      for (const [value, label] of [['manual','Manual levels'],['log','Log-spaced range']]) {
+        const opt = document.createElement('option'); opt.value = value; opt.textContent = label; scheme.appendChild(opt);
+      }
+      scheme.value = item.doseScheme || 'manual'; schemeCell.appendChild(scheme); tr.appendChild(schemeCell);
+      const doseCell = document.createElement('td'); doseCell.className = 'compound-doses';
+      const manual = document.createElement('input'); manual.className = 'compound-levels';
+      manual.setAttribute('aria-label', 'Comma-separated dose levels for ' + item.name);
+      manual.value = Array.isArray(item.levels) ? item.levels.join(', ') : item.levels;
+      manual.spellcheck = false; doseCell.appendChild(manual);
+      const fieldSet = document.createElement('div'); fieldSet.className = 'compound-log-fields';
+      const positives = (Array.isArray(item.levels) ? item.levels : String(item.levels).split(',').map(Number))
+        .filter(n => Number.isFinite(n) && n > 0);
+      const defaults = { min: positives.length ? Math.min(...positives) : '',
+        max: positives.length ? Math.max(...positives) : '', points: 3 };
+      for (const [key, title, val] of [['min','Min (> 0)',item.logMin ?? defaults.min],
+        ['max','Max (> min)',item.logMax ?? defaults.max],['points','Positive points',item.logPoints ?? defaults.points]]) {
+        const label = document.createElement('label'); label.textContent = title;
+        const input = document.createElement('input'); input.className = 'compound-log-' + key;
+        input.type = 'number'; input.step = key === 'points' ? '1' : 'any';
+        input.min = key === 'points' ? '2' : '0';
+        if (key === 'points') input.max = '4';
+        input.value = val; input.setAttribute('aria-label', title + ' for ' + item.name);
+        label.appendChild(input); fieldSet.appendChild(label);
+      }
+      const zeroLabel = document.createElement('label'); zeroLabel.className = 'compound-zero-label';
+      const zero = document.createElement('input'); zero.type = 'checkbox'; zero.className = 'compound-log-zero';
+      zero.checked = item.logIncludeZero !== false;
+      zeroLabel.append(zero, document.createTextNode('Include 0')); fieldSet.appendChild(zeroLabel);
+      doseCell.appendChild(fieldSet); tr.appendChild(doseCell); body.appendChild(tr);
+      updateCompoundDoseRow(tr);
+    }
+  }
+  function updateCompoundDoseRow(tr) {
+    const isLog = tr.querySelector('.compound-dose-scheme').value === 'log';
+    const canLog = $('design-dose-mode').value === 'concentration';
+    const manual = tr.querySelector('.compound-levels');
+    const range = tr.querySelector('.compound-log-fields');
+    manual.hidden = isLog; manual.disabled = isLog;
+    range.hidden = !isLog;
+    range.querySelectorAll('input').forEach(input => { input.disabled = !isLog || !canLog; });
+    tr.querySelector('.compound-dose-scheme').querySelector('option[value="log"]').disabled = !canLog;
+  }
+  function updateCompoundDoseRows() {
+    for (const tr of $('compound-rows').querySelectorAll('tr')) updateCompoundDoseRow(tr);
+  }
+  function readDesignForm() {
+    const compounds = [...$('compound-rows').querySelectorAll('tr')].map(tr => ({
+      name: tr.querySelector('.compound-name').value,
+      source: tr.querySelector('.compound-source').value,
+      stock: tr.querySelector('.compound-stock').value,
+      levels: tr.querySelector('.compound-levels').value,
+      doseScheme: tr.querySelector('.compound-dose-scheme').value,
+      logMin: tr.querySelector('.compound-log-min').value,
+      logMax: tr.querySelector('.compound-log-max').value,
+      logPoints: tr.querySelector('.compound-log-points').value,
+      logIncludeZero: tr.querySelector('.compound-log-zero').checked
+    }));
+    return {
+      mode: $('design-mode').value, doseMode: $('design-dose-mode').value,
+      volumeBasis: $('design-volume-basis').value,
+      targetFormat: state.targetFormat, sourceFormat: state.sourceFormat,
+      finalVolume: $('design-final-volume').value, unit: $('design-unit').value,
+      maxWellVolume: state.capacity, stockMicMultiple: $('design-stock-mic-multiple').value,
+      seed: $('design-seed').value, reserved: $('design-reserved').value,
+      subsetSize: $('design-subset-size').value, uniqueCount: $('design-unique-size').value,
+      replicates: $('design-replicates').value, compounds,
+      controls: { untreated: $('control-untreated').value, vehicle: $('control-vehicle').value,
+        reference: $('control-reference').value, vehicleSource: $('control-vehicle-source').value,
+        vehicleName: $('control-vehicle-name').value, vehicleVolume: $('control-vehicle-volume').value,
+        referenceCompound: $('control-reference-compound').value, referenceDose: $('control-reference-dose').value },
+      addDiluent: $('design-add-diluent').checked, diluentSource: $('design-diluent-source').value,
+      diluentName: $('design-diluent-name').value, minTransfer: $('design-min-transfer').value,
+      maxTransfer: $('design-max-transfer').value, sourceCapacity: $('design-source-capacity').value
+    };
+  }
+  function writeDesignForm(config) {
+    const mapping = {
+      'design-mode': config.mode, 'design-dose-mode': config.doseMode,
+      'design-volume-basis': config.volumeBasis || 'final',
+      'design-final-volume': config.finalVolume, 'design-unit': config.unit,
+      'design-stock-mic-multiple': config.stockMicMultiple ?? '',
+      'design-seed': config.seed, 'design-reserved': Array.isArray(config.reserved) ? config.reserved.join(',') : config.reserved,
+      'design-subset-size': config.subsetSize, 'design-unique-size': config.uniqueCount,
+      'design-replicates': config.replicates, 'design-diluent-source': config.diluentSource,
+      'design-diluent-name': config.diluentName, 'design-min-transfer': config.minTransfer,
+      'design-max-transfer': config.maxTransfer, 'design-source-capacity': config.sourceCapacity,
+      'control-untreated':config.controls?.untreated ?? 0,'control-vehicle':config.controls?.vehicle ?? 0,
+      'control-reference':config.controls?.reference ?? 0,'control-vehicle-source':config.controls?.vehicleSource ?? 'H12',
+      'control-vehicle-name':config.controls?.vehicleName ?? 'Vehicle',
+      'control-vehicle-volume':config.controls?.vehicleVolume ?? 0.3,
+      'control-reference-compound':config.controls?.referenceCompound ?? '',
+      'control-reference-dose':config.controls?.referenceDose ?? ''
+    };
+    for (const [id,value] of Object.entries(mapping)) $(id).value = value;
+    $('design-add-diluent').checked = !!config.addDiluent;
+    renderCompoundRows(config.compounds); updateDesignMode(); updateDoseLabels(); updateVolumeMode();
+  }
+  function updateDesignMode() {
+    const mode = $('design-mode').value;
+    for (const el of document.querySelectorAll('[data-show-mode]')) el.hidden = el.dataset.showMode !== mode && !(mode === 'sparse' && el.dataset.showMode === 'subset');
+  }
+  function updateDoseLabels() {
+    const concentration = $('design-dose-mode').value === 'concentration';
+    const stockHead = document.querySelector('.compound-table th:nth-child(3)');
+    const levelsHead = document.querySelector('.compound-table th:nth-child(4)');
+    stockHead.textContent = concentration ? 'Stock concentration (same unit)' : 'Stock (not used in volume mode)';
+    levelsHead.textContent = concentration ? 'Target concentrations, comma-separated' : 'Dispense volumes (µL), comma-separated';
+    $('design-unit').disabled = !concentration;
+    $('design-stock-mic-multiple').disabled = !concentration;
+    updateCompoundDoseRows();
+  }
+  function updateVolumeMode() {
+    const starting = $('design-volume-basis').value === 'starting';
+    $('design-volume-label').textContent = starting ? 'Starting medium already in each well (µL)' : 'Final assay volume (µL)';
+    $('design-dose-mode').options[0].textContent = starting
+      ? 'Nominal target concentration vs starting medium'
+      : 'Final concentration from stock';
+    $('design-add-diluent').disabled = starting;
+    if (starting) $('design-add-diluent').checked = false;
+    $('design-caution').textContent = starting
+      ? 'Fixed starting medium: every well already contains the specified medium volume. Antibiotics are added on top; no diluent is dispensed or requested. The manifest records final volume and dilution-adjusted concentrations per well. Confirm actual vessel capacity and headspace.'
+      : 'Fixed final volume: if top-up transfers are disabled, add the manifest’s external_top_up_uL separately to reach the selected final assay volume. Verify consumables and source volumes.';
+  }
+  function renderPlateNavigation() {
+    const nav = $('plate-navigation'), plates = currentPlates();
+    nav.hidden = !plates || plates.length < 2;
+    if (!plates) return;
+    const select = $('active-plate'), current = state.activePlate;
+    if (select.options.length !== plates.length || [...select.options].some((o,i)=>o.value!==String(i))) {
+      select.replaceChildren();
+      for (const [i,plate] of plates.entries()) {
+        const option = document.createElement('option'); option.value = String(i);
+        option.textContent = 'Target Plate ' + plate.number; select.appendChild(option);
+      }
+    }
+    select.value = String(current);
+    const plate = plates[current];
+    $('active-plate-info').textContent = state.plan ?
+      plate.assignments.filter(a=>a.role!=='control').length + ' treatments · ' + plate.assignments.filter(a=>a.role==='control').length + ' controls · ' + plate.tasks.length + ' steps' :
+      plate.tasks.length + ' imported dispensing instructions';
+  }
+  function activatePlate(index) {
+    const plates = currentPlates();
+    if (!plates || !plates[index]) return;
+    storeImportedPlate(); state.activePlate = index;
+    state.tasks = plates[index].tasks;
+    state.selected.clear(); state.lastClicked = null;
+    render();
+  }
+  function renderDesignSummary() {
+    const root = $('design-summary'); root.replaceChildren(); root.hidden = !state.plan;
+    if (!state.plan) return;
+    const plan = state.plan, top = document.createElement('div'); top.className = 'design-summary-top';
+    for (const [label, value] of [
+      ['Treatments',plan.summary.wells.toLocaleString()],['Controls',plan.summary.controls.toLocaleString()],['Plates',plan.summary.plates.toLocaleString()],
+      ['Dispensing steps',plan.summary.transfers.toLocaleString()],['Possible combinations',plan.config.totalPossible.toLocaleString()]
+    ]) {
+      const cell = document.createElement('div'); cell.className = 'design-metric';
+      const valueEl = document.createElement('b'); valueEl.textContent = value;
+      const labelEl = document.createElement('span'); labelEl.textContent = label;
+      cell.append(valueEl, labelEl); top.appendChild(cell);
+    }
+    root.appendChild(top);
+    const heading = document.createElement('h3'); heading.textContent = 'Level balance across generated assignments'; root.appendChild(heading);
+    const table = document.createElement('table'); table.className = 'compact-table';
+    const thead = document.createElement('thead'), hrow = document.createElement('tr');
+    for (const h of ['Compound','Dose levels → counts']) { const th = document.createElement('th'); th.textContent = h; hrow.appendChild(th); }
+    thead.appendChild(hrow); table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    for (let i = 0; i < plan.config.compounds.length; i++) {
+      const tr = document.createElement('tr');
+      for (const v of [plan.config.compounds[i].name, plan.config.compounds[i].levels.map((l,j)=>
+        C.numberText(l) + ' → ' + plan.summary.singleLevelCounts[i][j]).join('  ·  ')]) {
+        const td = document.createElement('td'); td.textContent = v; tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody); root.appendChild(table);
+    const paragraph = document.createElement('p');
+    const pair = plan.summary.pairCoverage;
+    paragraph.textContent = 'Observed all level pairs for ' + pair.filter(x=>x.observed===x.possible).length + ' / ' + pair.length +
+      ' compound pairs. Main effects are balanced by a greedy selection heuristic; this is not a guarantee of balanced higher-order interactions. ' +
+      plan.warnings.join(' ');
+    root.appendChild(paragraph);
+  }
+  function generateRandomized() {
+    try {
+      const config = readDesignForm();
+      const plan = D.generateDesign(config);
+      // Check every plate before changing the current view.
+      for (const plate of plan.plates) {
+        const validation = C.validateTasks(plate.tasks, plan.config.sourceFormat, plan.config.targetFormat, state.capacity);
+        if (validation.errors.length) throw new Error('Plate ' + plate.number + ': ' + validation.errors.join(' '));
+      }
+      state.plan = plan; state.importedPlates = null; state.activePlate = 0; state.tasks = plan.plates[0].tasks;
+      state.selected.clear(); state.lastClicked = null; state.example = false;
+      render(); renderDesignSummary();
+      announce('Created ' + plan.summary.wells + ' randomized assignments across ' + plan.plates.length +
+        ' plate(s). Download the full experiment manifest to preserve the treatment-to-well map.', 'success');
+    } catch (err) { errorMessage(err); }
+  }
+  function clearGeneratedDesign() {
+    if (!state.plan) return;
+    // Preserve the visible plate transfers only: other plates must be exported before leaving a plan.
+    if (state.plan.plates.length > 1 && !window.confirm('Return to the manual editor? Only the currently viewed plate transfers will remain; the other generated plates and their assignment manifest will be discarded. Download the complete ZIP or project JSON first.')) return;
+    state.tasks = state.plan.plates[state.activePlate].tasks.slice();
+    state.plan = null; state.activePlate = 0; state.selected.clear(); state.lastClicked = null;
+    render(); renderDesignSummary();
+    announce('Returned to manual editing. The current plate transfers were kept; the randomized assignment manifest is no longer active.', 'success');
+  }
+  function exportCombinedProtocol() {
+    try {
+      const plates = currentPlates();
+      if (!plates || !plates.length) throw new Error('No multiple-plate experiment to export.');
+      for (const plate of plates) {
+        const issues = C.validateTasks(plate.tasks, state.sourceFormat, state.targetFormat, state.capacity);
+        if (issues.errors.length) throw new Error('Plate ' + plate.number + ': ' + issues.errors.join('; '));
+      }
+      const files = plates.map(plate => ({ number: plate.number, tasks: plate.tasks }));
+      const csv = V.exportCombined({plates: files}, state.template, state.name,
+        state.sourceFormat, state.targetFormat, {settings:readInstrumentSettings()});
+      download(slug(state.name) + '_ALL_TARGET_PLATES_assay_studio_2_3.csv', csv);
+      announce('Exported one 16-column Assay Studio CSV for ' + plates.length + ' target plates. Validate the import in Assay Studio before running.', 'success');
+    } catch (err) { errorMessage(err); }
+  }
+  function exportBatch() {
+    if (!state.plan) return;
+    try {
+      const plan = state.plan, files = [
+        {name:'design_manifest.csv', content:D.manifestCsv(plan)},
+        {name:'source_map.csv', content:D.sourceMapCsv(plan)},
+        {name:'sparse_model_matrix.csv',content:D.featureMatrixCsv(plan)},
+        {name:'sparse_feature_legend.csv',content:D.featureLegendCsv(plan)},
+        {name:'measurements_template.csv',content:D.measurementsTemplateCsv(plan)},
+        {name:'experiment_config.json', content:JSON.stringify({ name:state.name, ...plan.config,
+          summary:plan.summary, warnings:plan.warnings },null,2)+'\n'},
+        {name:'README.txt', content:'I.DOT Plate Studio v3.2.1 randomized design\n\n' +
+          'The manifest includes randomly placed untreated/vehicle/reference controls, and all-zero-dose wells even without programmed transfers.\n' +
+          'Sparse model matrix is a candidate design for sparse-effects analysis, NOT an experimentally proven compressed sensing guarantee.\n' +
+          'Fill measurements_template.csv after the assay, then use the optional Python fit script from this repository.\n' +
+          'Volume basis: ' + (plan.config.volumeBasis === 'starting' ? 'fixed starting medium; no top-up required.' : 'fixed final volume; external top-up may be required.') + '\n' +
+          'The actual_final_volume_uL and per-compound actual-concentration fields describe the prepared mixture, assuming all required steps are performed.\n' +
+          'If external_top_up_uL is nonzero, this volume is NOT dispensed by this protocol.\n' +
+          'Verify liquid classes, source plate type, additional volume per source well, and instrument settings.\n' +
+          'Instrument import is NOT confirmed until tested inside actual Assay Studio 2.3.x.\n'}
+      ];
+      const template = V.validateTemplate(state.template, state.targetFormat, state.sourceFormat);
+      for (const plate of plan.plates) {
+        const validation = C.validateTasks(plate.tasks,state.sourceFormat,state.targetFormat,state.capacity);
+        if (validation.errors.length) throw new Error('Plate '+plate.number+': '+validation.errors.join(' '));
+        const tag = String(plate.number).padStart(3,'0');
+        files.push({name:'plates/plate_'+tag+'_tasks.csv',content:C.exportTaskCsv(plate.tasks,state.sourceFormat,state.targetFormat)});
+        if (!template.errors.length && plate.tasks.length) {
+          files.push({name:'plates/plate_'+tag+'_assay_studio_2_3.csv',content:V.exportProtocol(
+            plate.tasks,state.template,state.name+'_plate_'+tag,state.sourceFormat,state.targetFormat,
+            {plateNumber:plate.number,settings:readInstrumentSettings()})});
+        }
+      }
+      if (!template.errors.length) files.push({name:'ALL_TARGET_PLATES_assay_studio_2_3.csv',content:
+        V.exportCombined(plan,state.template,state.name,state.sourceFormat,state.targetFormat,{settings:readInstrumentSettings()})});
+      downloadFile(slug(state.name)+'_all_plates.zip',Z.zipFiles(files));
+      announce('ZIP exported for '+plan.plates.length+' plates'+
+        (template.errors.length?' (task lists only; load a genuine instrument template for full protocols).':' with one combined I.DOT 2.3.x protocol.'),'success');
+    } catch (err) { errorMessage(err); }
+  }
+  function bind() {
+    $('plate-grid').addEventListener('click', ev => {
+      const button = ev.target.closest('button[data-well]');
+      if (button) handleWellClick(button.dataset.well, ev.shiftKey);
+    });
+    $('source-grid').addEventListener('click', ev => {
+      const button = ev.target.closest('button[data-well]');
+      if (button) { $('source-well').value = button.dataset.well; render(); }
+    });
+    $('select-all').addEventListener('click', () => { state.selected = new Set(C.allWells(state.targetFormat)); render(); });
+    $('select-none').addEventListener('click', () => { state.selected.clear(); state.lastClicked = null; render(); });
+    $('select-row').addEventListener('click', () => {
+      const row = C.parseWell(state.lastClicked || 'A1', state.targetFormat).row;
+      const { cols } = C.formatInfo(state.targetFormat);
+      for (let c = 1; c <= cols; c++) state.selected.add(C.rowName(row) + c);
+      render();
+    });
+    $('select-col').addEventListener('click', () => {
+      const col = C.parseWell(state.lastClicked || 'A1', state.targetFormat).col + 1;
+      const { rows } = C.formatInfo(state.targetFormat);
+      for (let r = 0; r < rows; r++) state.selected.add(C.rowName(r) + col);
+      render();
+    });
+    $('target-format').addEventListener('change', ev => setFormats(ev.target.value, 'targetFormat'));
+    $('design-mode').addEventListener('change', updateDesignMode);
+    $('design-dose-mode').addEventListener('change', updateDoseLabels);
+    $('compound-rows').addEventListener('change', ev => {
+      if (ev.target && ev.target.matches('.compound-dose-scheme')) updateCompoundDoseRow(ev.target.closest('tr'));
+    });
+    $('design-volume-basis').addEventListener('change', updateVolumeMode);
+    $('generate-design').addEventListener('click', generateRandomized);
+    $('clear-design').addEventListener('click', clearGeneratedDesign);
+    $('active-plate').addEventListener('change', ev => { if (currentPlates()) activatePlate(Number(ev.target.value)); });
+    $('export-manifest').addEventListener('click', () => {
+      if (!state.plan) return;
+      download(slug(state.name) + '_design_manifest.csv', D.manifestCsv(state.plan));
+    });
+    $('export-matrix').addEventListener('click', () => {if (state.plan) download(slug(state.name)+'_sparse_model_matrix.csv',D.featureMatrixCsv(state.plan));});
+    $('export-responses').addEventListener('click', () => {if (state.plan) download(slug(state.name)+'_measurements_template.csv',D.measurementsTemplateCsv(state.plan));});
+    $('export-batch').addEventListener('click', exportBatch);
+    $('export-all-protocol').addEventListener('click', exportCombinedProtocol);
+    for (const id of ['idot-source-plate','idot-source-type','idot-liquid-class','idot-additional','idot-waste-well']) $(id).addEventListener('input', render);
+    $('source-format').addEventListener('change', ev => setFormats(ev.target.value, 'sourceFormat'));
+    $('protocol-name').addEventListener('input', ev => { state.name = ev.target.value; render(); });
+    $('capacity').addEventListener('input', ev => { state.capacity = ev.target.value; render(); });
+    $('source-overhead').addEventListener('change', render);
+    $('source-well').addEventListener('change', render);
+    $('apply').addEventListener('click', applyTransfers);
+    $('remove-selected').addEventListener('click', removeSelected);
+    $('load-template').addEventListener('change', ev => readFile(ev.target, text => importTaskData(text, true)));
+    $('load-tasks').addEventListener('change', ev => readFile(ev.target, text => importTaskData(text, false)));
+    $('load-project').addEventListener('change', ev => readFile(ev.target, loadProject));
+    $('export-json').addEventListener('click', saveProject);
+    $('load-demo').addEventListener('click', loadDemo);
+    $('export-list').addEventListener('click', () => {
+      try { download(slug(state.name) + (state.plan ? '_plate_' + String(state.activePlate + 1).padStart(3,'0') : '') + '_tasks.csv', C.exportTaskCsv(state.tasks, state.sourceFormat, state.targetFormat)); }
+      catch (err) { errorMessage(err); }
+    });
+    $('export-protocol').addEventListener('click', () => {
+      try {
+        if (getValidation().tasks.errors.length) throw new Error('Resolve task validation issues before exporting.');
+        download(slug(state.name) + (state.plan ? '_plate_' + String(state.activePlate + 1).padStart(3,'0') : '') + '_assay_studio.csv', V.exportProtocol(state.tasks, state.template, state.name, state.sourceFormat, state.targetFormat,
+          {plateNumber:state.plan ? state.activePlate+1 : (state.importedPlates ? state.importedPlates[state.activePlate].number : 1),settings:readInstrumentSettings()}));
+        announce('16-column Assay Studio 2.3.x candidate exported. Validate import and labware/liquid-class settings on the instrument.', 'success');
+      } catch (err) { errorMessage(err); }
+    });
+  }
+  renderCompoundRows(D.defaultConfig().compounds); bind(); updateDesignMode(); updateDoseLabels(); updateVolumeMode(); render();
+})();
+
+</script>
+</body>
+</html>

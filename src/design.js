@@ -33,6 +33,24 @@
     assert(new Set(levels).size === levels.length, name + ': dose levels must be distinct.');
     return levels;
   }
+  // An optional zero dose is separate from a strictly positive logarithmic range.
+  // Use actual numeric concentration values; endpoints are always included.
+  function logSpacedLevels(minimum, maximum, points, includeZero = true) {
+    const min = positiveNumber(minimum, 'Log-range minimum'), max = positiveNumber(maximum, 'Log-range maximum');
+    const count = positiveInteger(points, 'Positive log-range points');
+    assert(count >= 2 && count <= 4, 'Log ranges require 2–4 positive concentration points.');
+    assert(min < max, 'Log-range minimum must be smaller than the maximum.');
+    const levels = [];
+    if (includeZero) levels.push(0);
+    for (let i = 0; i < count; i++) {
+      // Precision is intentionally bounded for stable source code, CSV and JSON round-trips.
+      const value = i === 0 ? min : i === count - 1 ? max :
+        Number(Math.exp(Math.log(min) + (Math.log(max) - Math.log(min)) * i / (count - 1)).toPrecision(12));
+      levels.push(value);
+    }
+    assert(new Set(levels).size === levels.length, 'Log-range doses collapse to repeated values. Widen the range.');
+    return levels;
+  }
   function parseReserved(text, format) {
     const selected = new Set();
     const str = String(text || '').trim();
@@ -52,7 +70,7 @@
   function normalizeConfig(raw) {
     assert(raw && typeof raw === 'object', 'Experimental design configuration is missing.');
     const mode = String(raw.mode || 'subset');
-    assert(['full', 'subset', 'replicates'].includes(mode), 'Choose full factorial, balanced subset, or randomized replicates.');
+    assert(['full', 'subset', 'replicates', 'sparse'].includes(mode), 'Choose full factorial, balanced subset, randomized replicates, or sparse-recovery sampling.');
     const targetFormat = Number(raw.targetFormat || 96), sourceFormat = Number(raw.sourceFormat || 96);
     C.formatInfo(targetFormat); assert([96,384].includes(sourceFormat), 'Source plate format must be 96 or 384.');
     const doseMode = raw.doseMode || 'concentration';
@@ -72,10 +90,19 @@
       const name = C.makeTask({ source: item.source, target: 'A1', volume: 1, liquid: item.name }, sourceFormat, targetFormat).liquid;
       const source = C.parseWell(item.source, sourceFormat).name;
       const stock = doseMode === 'concentration' ? positiveNumber(item.stock, name + ' stock concentration') : Number(item.stock) || 1;
-      const levels = parseLevels(item.levels, name);
+      const doseScheme = String(item.doseScheme || 'manual');
+      assert(['manual', 'log'].includes(doseScheme), name + ': dose scheme must be manual or log.');
+      assert(doseScheme !== 'log' || doseMode === 'concentration', name + ': log ranges require concentration dosing, not direct dispense volumes.');
+      const logMin = doseScheme === 'log' ? positiveNumber(item.logMin, name + ' log minimum') : null;
+      const logMax = doseScheme === 'log' ? positiveNumber(item.logMax, name + ' log maximum') : null;
+      const logPoints = doseScheme === 'log' ? positiveInteger(item.logPoints, name + ' positive log points') : null;
+      const logIncludeZero = doseScheme === 'log' ? item.logIncludeZero !== false && item.logIncludeZero !== 'false' : null;
+      const levels = doseScheme === 'log'
+        ? logSpacedLevels(logMin, logMax, logPoints, logIncludeZero)
+        : parseLevels(item.levels, name);
       if (doseMode === 'concentration') assert(levels.every(v => v <= stock), name + ': a target concentration exceeds its stock concentration.');
       else if (volumeBasis === 'final') assert(levels.every(v => v <= finalVolume), name + ': a dispense volume exceeds final volume.');
-      return { name, source, stock, levels };
+      return { name, source, stock, levels, doseScheme, logMin, logMax, logPoints, logIncludeZero };
     });
     assert(new Set(compounds.map(c => c.name.toLowerCase())).size === compounds.length, 'Compound names must be unique.');
     assert(new Set(compounds.map(c => c.source)).size === compounds.length, 'Each compound needs its own source well.');
@@ -86,27 +113,61 @@
     const uniqueCount = positiveInteger(raw.uniqueCount ?? 24, 'Unique combination count');
     const replicates = positiveInteger(raw.replicates ?? 3, 'Replicates');
     const totalPossible = compounds.reduce((n, c) => n * c.levels.length, 1);
-    const sampleCount = mode === 'full' ? totalPossible : mode === 'subset' ? subsetSize : uniqueCount * replicates;
+    const sampleCount = mode === 'full' ? totalPossible : ['subset','sparse'].includes(mode) ? subsetSize : uniqueCount * replicates;
     assert(sampleCount <= 25000, 'This design exceeds 25,000 assignments. Reduce the factorial or split your experiment.');
-    if (mode === 'subset') assert(subsetSize <= totalPossible, 'A no-replacement subset cannot exceed ' + totalPossible + ' unique combinations.');
+    if (mode === 'subset' || mode === 'sparse') assert(subsetSize <= totalPossible, 'A no-replacement subset cannot exceed ' + totalPossible + ' unique combinations.');
     if (mode === 'replicates') assert(uniqueCount <= totalPossible, 'Unique combinations cannot exceed ' + totalPossible + '.');
-    assert(Math.ceil(sampleCount / capacity) <= 200, 'This design exceeds 200 plates. Change the plate format or reduce the design.');
+    const rawControls = raw.controls || {};
+    const controls = {
+      untreated: positiveInteger(rawControls.untreated ?? 0, 'Untreated controls per plate', true),
+      vehicle: positiveInteger(rawControls.vehicle ?? 0, 'Vehicle controls per plate', true),
+      reference: positiveInteger(rawControls.reference ?? 0, 'Reference controls per plate', true),
+      vehicleSource: C.parseWell(rawControls.vehicleSource || 'H12', sourceFormat).name,
+      vehicleName: String(rawControls.vehicleName || 'Vehicle').trim(),
+      vehicleVolume: positiveNumber(rawControls.vehicleVolume ?? 0.3, 'Vehicle dispense volume'),
+      referenceCompound: String(rawControls.referenceCompound || '').trim(),
+      referenceDose: rawControls.referenceDose ?? ''
+    };
+    controls.total = controls.untreated + controls.vehicle + controls.reference;
+    assert(controls.total < capacity, 'Controls must leave at least one treatment well on every plate.');
+    assert(controls.total <= 96 || targetFormat !== 96, 'A 96-well plate has at most 96 positions.');
+    if (controls.total) assert(compounds.every(c => c.levels.includes(0)),
+      'Each compound must have a zero level to construct antibiotic-free controls.');
+    if (controls.vehicle) {
+      assert(controls.vehicleName.length > 0 && controls.vehicleName.length <= 120, 'Vehicle liquid name is invalid.');
+      assert(!compounds.some(c => c.source === controls.vehicleSource), 'Vehicle source must differ from antibiotic sources.');
+      assert(!compounds.some(c => c.name.toLowerCase() === controls.vehicleName.toLowerCase()), 'Vehicle name must differ from compound names.');
+    }
+    if (controls.reference) {
+      controls.referenceIndex = compounds.findIndex(c => c.name.toLowerCase() === controls.referenceCompound.toLowerCase());
+      assert(controls.referenceIndex >= 0, 'Reference control compound must match a compound name exactly.');
+      const level = positiveNumber(controls.referenceDose, 'Reference control dose');
+      controls.referenceLevel = compounds[controls.referenceIndex].levels.indexOf(level);
+      assert(controls.referenceLevel >= 0 && level > 0, 'Reference control dose must match a positive level of that compound.');
+    }
+    const perPlateTreatments = capacity - controls.total;
+    assert(Math.ceil(sampleCount / perPlateTreatments) <= 200, 'This design exceeds 200 plates. Change the plate format or reduce the design.');
     const minTransfer = positiveNumber(raw.minTransfer ?? 0.008, 'Minimum dispense volume');
     const maxTransfer = positiveNumber(raw.maxTransfer ?? 30, 'Maximum dispense volume');
     assert(minTransfer <= maxTransfer, 'The minimum transfer must be no larger than the maximum.');
     const sourceCapacity = positiveNumber(raw.sourceCapacity ?? 80, 'Source-well usable volume', true);
+    if (controls.vehicle) {
+      assert(controls.vehicleVolume >= minTransfer - 1e-12 && controls.vehicleVolume <= maxTransfer + 1e-9,
+        'Vehicle dispense is outside configured instrument volume limits.');
+    }
     const addDiluent = !!raw.addDiluent;
     assert(volumeBasis !== 'starting' || !addDiluent,
       'Fixed starting medium mode must not add a diluent top-up; uncheck Include top-up/diluent.');
     const diluentSource = C.parseWell(raw.diluentSource || 'H12', sourceFormat).name;
     const diluentName = C.makeTask({ source: diluentSource, target: 'A1', volume: 1, liquid: raw.diluentName || 'Diluent' }, sourceFormat, targetFormat).liquid;
+    if (addDiluent && controls.vehicle) assert(diluentSource !== controls.vehicleSource, 'Vehicle and diluent must have different sources.');
     if (addDiluent) {
       assert(!compounds.some(c => c.source === diluentSource), 'Diluent source well must differ from compound source wells.');
       assert(!compounds.some(c => c.name.toLowerCase() === diluentName.toLowerCase()), 'Diluent liquid name must differ from compound names.');
     }
     return { mode, targetFormat, sourceFormat, doseMode, volumeBasis, finalVolume,
       maxWellVolume, stockMicMultiple, unit, compounds, reserved: reserved.sort(),
-      subsetSize, uniqueCount, replicates, sampleCount, totalPossible, capacity,
+      subsetSize, uniqueCount, replicates, sampleCount, totalPossible, capacity, controls, perPlateTreatments,
       seed: String(raw.seed ?? '1701'), addDiluent, diluentSource, diluentName, minTransfer, maxTransfer, sourceCapacity };
   }
   function enumerate(compounds) {
@@ -146,12 +207,51 @@
     }
     return shuffle(selected, random);
   }
+  // Heuristic: balance main/pair dose coverage, while discouraging repeatedly
+  // co-activated columns of the prospective sparse-recovery model matrix.
+  // This improves experimental diversity but does NOT prove recovery guarantees.
+  function sparsePick(pool, count, compounds, random) {
+    const remaining = shuffle(pool.slice(),random), selected=[];
+    const levels=compounds.map(c=>Array(c.levels.length).fill(0));
+    const dosePairs=[];
+    for(let i=0;i<compounds.length;i++) for(let j=i+1;j<compounds.length;j++) {
+      dosePairs.push({i,j,nJ:compounds[j].levels.length, counts:Array(compounds[i].levels.length*compounds[j].levels.length).fill(0)});
+    }
+    const features=featureSpec({compounds});
+    const active=new Map(pool.map(c=>[c.id, features.flatMap((f,k)=>
+      c.indices[f.i]===f.j && (f.k===undefined||c.indices[f.k]===f.l) ? [k]:[])]));
+    const fCount=Array(features.length).fill(0);
+    const together=Array.from({length:features.length},()=>new Uint32Array(features.length));
+    for(let n=0;n<count;n++) {
+      const cap=Math.min(remaining.length,640),start=remaining.length<=cap?0:Math.floor(random()*remaining.length);
+      let best=Infinity, choice=-1;
+      for(let z=0;z<cap;z++) {
+        const at=(start+z)%remaining.length, c=remaining[at], a=active.get(c.id);
+        let score=0;
+        for(let i=0;i<compounds.length;i++) score+=2*levels[i][c.indices[i]]+1;
+        for(const x of dosePairs) score+=0.36*(2*x.counts[c.indices[x.i]*x.nJ+c.indices[x.j]]+1);
+        for(let t=0;t<a.length;t++) {
+          score+=0.08*fCount[a[t]];
+          for(let u=t+1;u<a.length;u++) score+=0.012*together[a[t]][a[u]];
+        }
+        if(score<best-1e-10){best=score;choice=at;}
+      }
+      const item=remaining.splice(choice,1)[0], a=active.get(item.id);selected.push(item);
+      item.indices.forEach((v,i)=>levels[i][v]++);
+      for(const x of dosePairs)x.counts[item.indices[x.i]*x.nJ+item.indices[x.j]]++;
+      for(let t=0;t<a.length;t++) {
+        fCount[a[t]]++;
+        for(let u=t+1;u<a.length;u++)together[a[t]][a[u]]++;
+      }
+    }
+    return shuffle(selected,random);
+  }
   function makeAssignments(config, random) {
     const pool = enumerate(config.compounds);
     if (config.mode === 'full') return shuffle(pool, random).map(c => ({ ...c, replicate: 1 }));
-    const count = config.mode === 'subset' ? config.subsetSize : config.uniqueCount;
-    const subset = balancedPick(pool, count, config.compounds, random);
-    if (config.mode === 'subset') return subset.map(c => ({ ...c, replicate: 1 }));
+    const count = ['subset','sparse'].includes(config.mode) ? config.subsetSize : config.uniqueCount;
+    const subset = config.mode === 'sparse' ? sparsePick(pool, count, config.compounds, random) : balancedPick(pool, count, config.compounds, random);
+    if (['subset','sparse'].includes(config.mode)) return subset.map(c => ({ ...c, replicate: 1 }));
     const result = [];
     for (const c of subset) for (let replicate = 1; replicate <= config.replicates; replicate++) result.push({ ...c, replicate });
     return shuffle(result, random);
@@ -188,20 +288,47 @@
     return { doses, volumes, compoundTotal, topUp, startingMedium, actualFinalVolume,
       actualDoses, targetMicMultiples, actualMicMultiples };
   }
+  function controlEntries(config) {
+    const c = config.controls, out = [];
+    for (const type of ['untreated','vehicle','reference']) {
+      for (let i = 0; i < c[type]; i++) out.push({role:'control', controlType:type, replicate:i+1});
+    }
+    return out;
+  }
   function generateDesign(raw) {
     const config = normalizeConfig(raw), random = seededRandom(config.seed);
     const selected = makeAssignments(config, random);
     const available = C.allWells(config.targetFormat).filter(w => !config.reserved.includes(w));
-    const plateCount = Math.ceil(selected.length / available.length);
-    const plates = [];
-    const warnings = [];
+    const plateCount = Math.ceil(selected.length / config.perPlateTreatments);
+    const plates = [], warnings = [];
     let cursor = 0;
     for (let index = 0; index < plateCount; index++) {
+      // Mix controls and treatments before assigning any coordinates. No control-only rows.
+      const batch = selected.slice(cursor, cursor + config.perPlateTreatments)
+        .map(x => ({...x, role:'treatment', controlType:''}));
+      cursor += batch.length;
+      batch.push(...controlEntries(config));
+      shuffle(batch, random);
       const wells = shuffle(available.slice(), random);
       const assignments = [], tasks = [];
-      while (cursor < selected.length && assignments.length < wells.length) {
-        const entry = selected[cursor++], well = wells[assignments.length];
-        const v = calculateVolumes(config, entry.indices);
+      for (let n=0; n<batch.length; n++) {
+        const entry = batch[n], well = wells[n], isControl = entry.role === 'control';
+        const zeroIndices = config.compounds.map(c => c.levels.indexOf(0));
+        const indices = !isControl ? entry.indices.slice() : zeroIndices;
+        if (isControl && entry.controlType === 'reference') indices[config.controls.referenceIndex] = config.controls.referenceLevel;
+        const v = calculateVolumes(config, indices);
+        const vehicleVolume = isControl && entry.controlType === 'vehicle' ? config.controls.vehicleVolume : 0;
+        if (vehicleVolume) {
+          if (config.volumeBasis === 'starting') v.actualFinalVolume += vehicleVolume;
+          else {
+            assert(vehicleVolume <= v.topUp + 1e-9, 'Vehicle control exceeds target final assay volume.');
+            v.topUp -= vehicleVolume;
+          }
+          if (config.maxWellVolume !== null) assert(v.actualFinalVolume <= config.maxWellVolume + 1e-9,
+            'Plate ' + (index+1) + ' control '+ well + ': final volume exceeds physical well limit.');
+          tasks.push(C.makeTask({ source:config.controls.vehicleSource, target:well,
+            volume:vehicleVolume, liquid:config.controls.vehicleName }, config.sourceFormat, config.targetFormat));
+        }
         v.volumes.forEach((volume, i) => {
           if (volume === 0) return;
           assert(volume >= config.minTransfer - 1e-12, 'Plate ' + (index+1) + ' ' + well + ': ' + config.compounds[i].name + ' needs ' + C.numberText(volume) + ' µL, below configured minimum ' + config.minTransfer + ' µL. Dilute stock or raise target dose.');
@@ -213,31 +340,30 @@
             'Plate ' + (index+1) + ' ' + well + ': diluent volume ' + C.numberText(v.topUp) + ' µL is outside the configured dispense limits.');
           tasks.push(C.makeTask({ source: config.diluentSource, target: well, volume: v.topUp, liquid: config.diluentName }, config.sourceFormat, config.targetFormat));
         }
-        assignments.push({ plate: index + 1, well, combinationId: entry.id, replicate: entry.replicate,
-          indices: entry.indices.slice(), doses: v.doses, volumes: v.volumes,
-          startingMedium: v.startingMedium, actualFinalVolume: v.actualFinalVolume,
-          actualDoses: v.actualDoses, targetMicMultiples: v.targetMicMultiples,
-          actualMicMultiples: v.actualMicMultiples,
-          compoundTotal: v.compoundTotal, diluentVolume: config.addDiluent ? v.topUp : 0,
-          externalTopUp: config.addDiluent ? 0 : v.topUp, finalVolume: v.actualFinalVolume });
+        assignments.push({ plate:index+1, well, role:entry.role, controlType:entry.controlType,
+          combinationId:isControl ? '' : entry.id, replicate:entry.replicate,
+          indices, doses:v.doses, volumes:v.volumes, vehicleVolume,
+          startingMedium:v.startingMedium, actualFinalVolume:v.actualFinalVolume,
+          actualDoses:v.actualDoses, targetMicMultiples:v.targetMicMultiples,
+          actualMicMultiples:v.actualMicMultiples, compoundTotal:v.compoundTotal,
+          diluentVolume:config.addDiluent ? v.topUp : 0,
+          externalTopUp:config.addDiluent ? 0 : v.topUp, finalVolume:v.actualFinalVolume });
       }
       const sourceTotals = C.totals(tasks).sources;
       if (config.sourceCapacity > 0) for (const [source, dispensed] of Object.entries(sourceTotals)) {
         assert(dispensed <= config.sourceCapacity + 1e-9,
           'Plate ' + (index + 1) + ': source ' + source + ' requires ' + C.numberText(dispensed) + ' µL, exceeding the configured ' + config.sourceCapacity + ' µL usable source volume (before dead volume).');
       }
-      plates.push({ number: index + 1, assignments, tasks, reserved: config.reserved.slice() });
+      plates.push({ number:index+1, assignments, tasks, reserved:config.reserved.slice() });
     }
-    if (config.volumeBasis === 'starting') {
-      warnings.push('Each well already contains ' + C.numberText(config.finalVolume) +
-        ' µL starting medium. No top-up is generated. Final well volumes and actual concentrations include all planned compound additions; confirm labware capacity and headspace.');
-    } else if (!config.addDiluent) {
-      warnings.push('The I.DOT tasks omit the per-well external top-up. Add the manifest’s external_top_up_uL with a separate validated step to reach final volume and intended concentrations.');
-    }
-    if (config.volumeBasis === 'starting' && config.doseMode === 'concentration')
-      warnings.push('Target concentrations are nominal relative to the starting medium; actual concentrations are lower after pooled compound additions.');
-    if (config.sourceCapacity > 0) warnings.push('Source consumption checks exclude dead volume, priming, and extra instrument requirements.');
-    return { version: 1, config, plates, warnings, summary: summarize(config, plates) };
+    if (config.volumeBasis === 'starting') warnings.push('Each well already contains ' + C.numberText(config.finalVolume) +
+      ' µL starting medium. No top-up is generated; check total physical capacity and headspace.');
+    else if (!config.addDiluent) warnings.push('The I.DOT tasks omit external top-ups; add manifest external_top_up_uL separately to reach final volume.');
+    if (config.controls.vehicle) warnings.push('Vehicle controls do not automatically match the solvent carried by every antibiotic stock. Match solvents experimentally.');
+    if (config.mode === 'sparse') warnings.push('Sparse-recovery sampling is a balanced, seeded heuristic, not a guarantee of compressed-sensing recovery. Analyze measured outcomes with a sparsity-regularized model and validate predictions.');
+    if (config.compounds.some(c => c.doseScheme === 'log')) warnings.push('Logarithmic dosing uses discrete geometric concentrations per source, not continuously random concentrations. Generated levels and random assignments are recorded in the manifest.');
+    if (config.sourceCapacity > 0) warnings.push('Source checks exclude priming and dead volume.');
+    return {version:2, config, plates, warnings, summary:summarize(config, plates)};
   }
   function summarize(config, plates) {
     const counts = config.compounds.map(c => c.levels.map(() => 0));
@@ -246,10 +372,13 @@
       pairCounts.push({ a: i, b: j, cells: new Set() });
     }
     for (const plate of plates) for (const a of plate.assignments) {
+      if (a.role === 'control') continue;
       a.indices.forEach((level, i) => counts[i][level]++);
       for (const p of pairCounts) p.cells.add(a.indices[p.a] + ':' + a.indices[p.b]);
     }
-    return { plates: plates.length, wells: plates.reduce((n,p)=>n+p.assignments.length,0),
+    return { plates: plates.length, controls: plates.reduce((n,p)=>n+p.assignments.filter(a=>a.role==='control').length,0),
+      assignedWells: plates.reduce((n,p)=>n+p.assignments.length,0),
+      wells: plates.reduce((n,p)=>n+p.assignments.filter(a=>a.role!=='control').length,0),
       transfers: plates.reduce((n,p)=>n+p.tasks.length,0), singleLevelCounts: counts,
       pairCoverage: pairCounts.map(p=>({ a:config.compounds[p.a].name,b:config.compounds[p.b].name,
         observed:p.cells.size,possible:config.compounds[p.a].levels.length*config.compounds[p.b].levels.length })) };
@@ -263,7 +392,7 @@
       heading.push(c.name + '_dose_' + (cfg.doseMode === 'concentration' ? cfg.unit : 'uL'));
       heading.push(c.name + '_dispense_uL');
     }
-    heading.push('volume_basis', 'starting_media_uL', 'actual_final_volume_uL');
+    heading.push('volume_basis', 'starting_media_uL', 'actual_final_volume_uL', 'control_type', 'vehicle_dispense_uL');
     for (const c of cfg.compounds) {
       heading.push(c.name + '_actual_concentration_' + cfg.unit,
         c.name + '_target_MIC_multiple', c.name + '_actual_MIC_multiple');
@@ -274,10 +403,10 @@
         const wx = C.parseWell(x.well, cfg.targetFormat), wy = C.parseWell(y.well, cfg.targetFormat);
         return wx.row - wy.row || wx.col - wy.col;
       })) {
-        const row = [a.plate, a.well, 'assigned', a.combinationId, a.replicate, C.numberText(a.finalVolume),
+        const row = [a.plate, a.well, a.role === 'control' ? 'control' : 'assigned', a.combinationId, a.replicate, C.numberText(a.finalVolume),
           C.numberText(a.compoundTotal), C.numberText(a.diluentVolume), C.numberText(a.externalTopUp)];
         for (let i = 0; i < cfg.compounds.length; i++) row.push(C.numberText(a.doses[i]), C.numberText(a.volumes[i]));
-        row.push(cfg.volumeBasis, C.numberText(a.startingMedium), C.numberText(a.actualFinalVolume));
+        row.push(cfg.volumeBasis, C.numberText(a.startingMedium), C.numberText(a.actualFinalVolume), a.controlType || '', C.numberText(a.vehicleVolume || 0));
         for (let i = 0; i < cfg.compounds.length; i++) {
           row.push(a.actualDoses ? C.numberText(a.actualDoses[i]) : '',
             a.targetMicMultiples ? C.numberText(a.targetMicMultiples[i]) : '',
@@ -289,7 +418,7 @@
         rows.push([plate.number, well, 'reserved', '', '', '', '', '', '',
           ...cfg.compounds.flatMap(() => ['', '']),
           cfg.volumeBasis, cfg.volumeBasis === 'starting' ? C.numberText(cfg.finalVolume) : '',
-          cfg.volumeBasis === 'starting' ? C.numberText(cfg.finalVolume) : '',
+          cfg.volumeBasis === 'starting' ? C.numberText(cfg.finalVolume) : '', '', '',
           ...cfg.compounds.flatMap(() => ['', '', ''])]);
       }
     }
@@ -301,9 +430,50 @@
       const totals = C.totals(plate.tasks).sources;
       for (const comp of plan.config.compounds) rows.push([plate.number, comp.source, comp.name, plan.config.doseMode === 'concentration' ? C.numberText(comp.stock) : '',
         plan.config.doseMode === 'concentration' ? plan.config.unit : '', C.numberText(totals[comp.source] || 0), C.numberText((totals[comp.source] || 0) * 1.05 + 1)]);
+      if (plan.config.controls && plan.config.controls.vehicle) rows.push([plate.number, plan.config.controls.vehicleSource,
+        plan.config.controls.vehicleName, '', '', C.numberText(totals[plan.config.controls.vehicleSource] || 0),
+        C.numberText((totals[plan.config.controls.vehicleSource] || 0) * 1.05 + 1)]);
       if (plan.config.addDiluent) rows.push([plate.number, plan.config.diluentSource, plan.config.diluentName, '', '',
         C.numberText(totals[plan.config.diluentSource] || 0), C.numberText((totals[plan.config.diluentSource] || 0) * 1.05 + 1)]);
     }
+    return C.csvRows(rows);
+  }
+  function featureSpec(cfg) {
+    const entries = [];
+    for (let i=0;i<cfg.compounds.length;i++) for (let j=0;j<cfg.compounds[i].levels.length;j++) {
+      if (cfg.compounds[i].levels[j] !== 0) entries.push({name:'main__'+i+'__'+j, i, j});
+    }
+    for (let i=0;i<cfg.compounds.length;i++) for (let k=i+1;k<cfg.compounds.length;k++) {
+      for (let j=0;j<cfg.compounds[i].levels.length;j++) for (let l=0;l<cfg.compounds[k].levels.length;l++) {
+        if (cfg.compounds[i].levels[j] !== 0 && cfg.compounds[k].levels[l] !== 0)
+          entries.push({name:'pair__'+i+'__'+j+'__'+k+'__'+l,i,j,k,l});
+      }
+    }
+    return entries;
+  }
+  function featureMatrixCsv(plan) {
+    const spec=featureSpec(plan.config), rows=[['plate','well','status','control_type','combination_id','replicate',
+      ...spec.map(x=>x.name)]];
+    for(const plate of plan.plates) for(const a of plate.assignments) {
+      rows.push([a.plate,a.well,a.role==='control'?'control':'treatment',a.controlType||'',a.combinationId,a.replicate,
+        ...spec.map(x => (a.indices[x.i]===x.j && (x.k===undefined || a.indices[x.k]===x.l))?1:0)]);
+    }
+    return C.csvRows(rows);
+  }
+  function featureLegendCsv(plan) {
+    const cfg=plan.config;
+    const rows=[['feature','feature_type','compound_1','level_1','compound_2','level_2','dose_unit']];
+    for(const f of featureSpec(cfg)) rows.push([f.name,f.k===undefined?'main':'pair',
+      cfg.compounds[f.i].name,C.numberText(cfg.compounds[f.i].levels[f.j]),
+      f.k===undefined?'':cfg.compounds[f.k].name,
+      f.k===undefined?'':C.numberText(cfg.compounds[f.k].levels[f.l]),
+      cfg.doseMode==='concentration'?cfg.unit:'µL']);
+    return C.csvRows(rows);
+  }
+  function measurementsTemplateCsv(plan) {
+    const rows=[['plate','well','status','control_type','combination_id','replicate','response']];
+    for(const plate of plan.plates) for(const a of plate.assignments) rows.push([a.plate,a.well,
+      a.role==='control'?'control':'treatment',a.controlType||'',a.combinationId,a.replicate,'']);
     return C.csvRows(rows);
   }
   function defaultConfig() {
@@ -311,8 +481,9 @@
       volumeBasis: 'final', finalVolume: 20, maxWellVolume: null, stockMicMultiple: null, unit: 'µM',
       compounds: Array.from({length:6}, (_,i)=>({ name:'Compound_'+String.fromCharCode(65+i), source:'A'+(i+1), stock:1000, levels:[0,1,5] })),
       reserved: '', subsetSize: 96, uniqueCount: 24, replicates: 3, seed: '1701',
+      controls:{untreated:0,vehicle:0,reference:0,vehicleSource:'H12',vehicleName:'Vehicle',vehicleVolume:0.3,referenceCompound:'',referenceDose:''},
       addDiluent: false, diluentSource: 'H12', diluentName: 'Diluent', minTransfer: 0.008, maxTransfer: 30, sourceCapacity: 80 };
   }
-  return { seededRandom, shuffle, parseLevels, parseReserved, normalizeConfig, enumerate, balancedPick,
-    calculateVolumes, generateDesign, manifestCsv, sourceMapCsv, defaultConfig };
+  return { seededRandom, shuffle, parseLevels, logSpacedLevels, parseReserved, normalizeConfig, enumerate, balancedPick, sparsePick,
+    calculateVolumes, generateDesign, manifestCsv, sourceMapCsv, featureMatrixCsv, featureLegendCsv, measurementsTemplateCsv, defaultConfig };
 });
