@@ -7,7 +7,7 @@ The following was deduced from two instrument-uploadable examples supplied by th
 - UTF-8 **BOM** (`EF BB BF`), CRLF (`\r\n`) newlines.
 - Line 1: `sep=,`
 - Line 2: protocol name, software version, user label, date, time (five CSV columns).
-- Line 3: seven comma-separated instrument setting expressions, such as `DispenseToWaste=False`, `OptimizationLevel=ReorderAndParallel`, `SaveLiquids=Never`. This line is **preserved from the imported template**.
+- Line 3: seven comma-separated instrument setting expressions, such as `DispenseToWaste=False`, `OptimizationLevel=ReorderAndParallel`, `SaveLiquids=Never`. This line is **preserved from an imported template** in template-based mode; in new-CSV mode Plate Studio generates a 2.3.2.6 header from the user-selected settings and reference defaults.
 - Line 4: blank.
 - Line 5: the exact sixteen-column header shown below.
 - Line 6 onward: 16-column dispense records. One row is one dispense. Multiple rows can target the same well. Plate identity is a field in each row, rather than one protocol file per plate.
@@ -21,7 +21,7 @@ Target Plate,Target Plate Type,Target Plate Barcode,Target Well,Waste Well,Sourc
 | # | Header | Observed content / v3 behavior |
 |---|---|---|
 | 1 | Target Plate | `Target Plate 1` through `Target Plate 6` observed; new multi-plate designs use sequential target-plate identifiers |
-| 2 | Target Plate Type | `384-Well`, `1536-Well` observed; geometry generated to match chosen template |
+| 2 | Target Plate Type | `384-Well`, `1536-Well` observed; generated geometry matches the selected target format; the 96-well output has not been verified in Assay Studio |
 | 3 | Target Plate Barcode | Empty in both references; preserved for imported rows |
 | 4 | Target Well | `A01`–`P24` (384); `Aa01`–`Hd48` (1536) |
 | 5 | Waste Well | `Waste Tube` observed; inherited or editable for new rows |
@@ -51,3 +51,11 @@ The examples themselves are **not bundled into the public source ZIP**; the test
 ### What this does *not* prove
 
 Byte-for-byte round trips demonstrate parser/serializer fidelity only for the two supplied examples. A newly randomized CSV might still be rejected by Assay Studio due to version-specific rules, incorrect liquid classes, absent liquid library entries, source plate compatibility, numeric/volume constraints, timing, and dispensing setup. The program does **not** independently authenticate vendor settings or check instrument readiness. Always test an actual **Assay Studio import and preview** before attempting a real run.
+
+## v3.2.2: generate from scratch or use template
+
+**Generate new Assay Studio CSV (default)** creates the same five metadata/header rows and sixteen transfer columns without an uploaded CSV. The second metadata field is always software version `2.3.2.6`, which is the only observed reference version. The protocol name is taken from the UI, user label is editable (`Plate Studio` initially), and date/time come from the local clock. The third metadata row uses the values observed in the supplied 1536-well example by default, with explicit UI controls for dispense-to-waste, deionisation, and save-liquids. The template created by `IDotV23.createDefaultTemplate(targetFormat,sourceFormat,options)` is passed through the existing strict 16-column exporter.
+
+**Use imported Assay Studio CSV as template (optional)** preserves the original five header rows and per-liquid metadata from a compatible instrument-exported CSV. Importing **as a template** never changes the current randomized or manual dispensing assignments. An existing CSV can separately be **opened for editing** to adopt its transfer rows.
+
+**Limitations:** These reference-based header defaults are NOT confirmed to be manufacturer-approved. There is no actual 96-well Assay Studio instrument fixture in this repository; the program generates `96-Well` and coordinates such as `A01` based on the existing plate grammar. The application does not check liquid-class library entries, wash/deionisation/waste hardware, source dead volume, source consumable compatibility, physical plate capacity, or real I.DOT import success. Always inspect newly generated files in genuine Assay Studio before dispensing.

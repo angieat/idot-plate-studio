@@ -108,10 +108,53 @@
     const plates = [...byPlate.entries()].sort((a,b)=>a[0]-b[0]).map(([number,tasks]) => ({number,tasks}));
     return { full:true, tasks: parsed, template, plates, targetFormat: fmt, sourceFormat: sourceFmt, originalName: rows[1][0] };
   }
+  // Creates a candidate Assay Studio 2.3.2.6 CSV without an uploaded template.
+  // Header/settings are derived from two provided 2.3.2.6 instrument exports;
+  // the vendor has not validated a synthesized header or 96-well destination export.
+  function createDefaultTemplate(targetFormat, sourceFormat, options={}) {
+    const target = Number(targetFormat), source = Number(sourceFormat);
+    C.formatInfo(target); C.formatInfo(source);
+    if (![96,384].includes(source)) throw new Error('Source format must be 96 or 384 wells.');
+    const date = options.date === undefined ? new Date() : new Date(options.date);
+    if (!Number.isFinite(date.getTime())) throw new Error('Invalid CSV generation date.');
+    const pad = value => String(value).padStart(2, '0');
+    const dateLabel = pad(date.getMonth()+1) + '/' + pad(date.getDate()) + '/' + date.getFullYear();
+    const hour = date.getHours(), timeLabel = (hour % 12 || 12) + ':' + pad(date.getMinutes()) + ' ' + (hour < 12 ? 'AM' : 'PM');
+    const label = safe(options.userLabel === undefined ? 'Plate Studio' : options.userLabel, 'User label');
+    const boolSetting = (value, defaultValue, field) => {
+      const result = value === undefined ? defaultValue : String(value);
+      if (!['True','False'].includes(result)) throw new Error('Invalid ' + field + ': expected True or False.');
+      return result;
+    };
+    const dispenseToWaste = boolSetting(options.dispenseToWaste, 'False', 'DispenseToWaste');
+    const useDeionisation = boolSetting(options.useDeionisation, 'True', 'UseDeionisation');
+    const saveLiquids = options.saveLiquids === undefined ? 'Never' : String(options.saveLiquids);
+    if (!['Never','Ask'].includes(saveLiquids)) throw new Error('SaveLiquids must be Never or Ask.');
+    const metadata = [
+      'DispenseToWaste=' + dispenseToWaste,
+      'DispenseToWasteCycles=3',
+      'DispenseToWasteVolume=1e-7',
+      'UseDeionisation=' + useDeionisation,
+      'OptimizationLevel=ReorderAndParallel',
+      'WasteErrorHandlingLevel=Ask',
+      'SaveLiquids=' + saveLiquids
+    ];
+    const makeLine = columns => columns.map(C.csvCell).join(',');
+    return {
+      kind: 'idot-v23', generated: true, softwareVersion: VERSION,
+      originalName: '', targetFormat: target, sourceFormat: source, plateLabel: formatLabel(target),
+      headerLines: ['sep=,', makeLine(['Generated_Protocol',VERSION,label,dateLabel,timeLabel]),
+        makeLine(metadata), '', makeLine(HEADER)],
+      liquidProfiles: {},
+      defaults: { sourcePlate:'Source Plate 1',sourcePlateType:'L.100 Plate',sourceBarcode:'',targetBarcode:'',
+        wasteWell:'Waste Tube',liquidClass:'VSCY 1 mPa*s (H2O)',additional:'0e0',xOffset:'',yOffset:'',spotArray:'' },
+      originalPlateNumbers: []
+    };
+  }
   function validateTemplate(template, targetFormat, sourceFormat) {
     const errors = [], warnings = [];
     if (!template || template.kind !== 'idot-v23' || !Array.isArray(template.headerLines) || template.headerLines.length !== 5) {
-      errors.push('Import a genuine Assay Studio 2.3.x CSV (five metadata/header lines and 16 columns) before full-protocol export.');
+      errors.push('Select Generate new Assay Studio CSV, or import a matching 2.3.x protocol template for template-based export.');
       return { errors, warnings };
     }
     try {
@@ -181,6 +224,6 @@
     for (const plate of plan.plates) for (const task of plate.tasks) all.push({ ...task, targetPlate: plate.number });
     return exportProtocol(all, template, name, sourceFormat, targetFormat, options);
   }
-  return { HEADER, VERSION, isProtocol, importProtocol, validateTemplate, toIdotWell,
+  return { HEADER, VERSION, isProtocol, importProtocol, createDefaultTemplate, validateTemplate, toIdotWell,
     fromIdotWell, scientific, exportProtocol, exportCombined };
 });

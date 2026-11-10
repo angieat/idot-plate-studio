@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>I.DOT Plate Studio v3.2.1 — Assay Studio 2.3 CSV Planner</title>
+  <title>I.DOT Plate Studio v3.2.2 — Assay Studio 2.3 CSV Planner</title>
   <link rel="stylesheet" href="src/styles.css">
   <script defer src="src/core.js"></script>
   <script defer src="src/idot_v23.js"></script>
@@ -15,13 +15,13 @@
 <body>
   <header class="masthead">
     <div class="masthead-inner">
-      <div class="identity"><span class="mark">ID</span><div><strong>I.DOT Plate Studio v3.2.1</strong><small>MAC-COMPATIBLE · OFFLINE CSV DESIGNER</small></div></div>
+      <div class="identity"><span class="mark">ID</span><div><strong>I.DOT Plate Studio v3.2.2</strong><small>MAC-COMPATIBLE · OFFLINE CSV DESIGNER</small></div></div>
       <div class="masthead-actions"><span class="pill">Unofficial research tool</span><button class="button ghost" id="load-demo" type="button">Load example</button></div>
     </div>
   </header>
   <main class="shell">
     <div class="intro"><div><h1>Design and randomize I.DOT plate experiments on your Mac.</h1><p>Assign compound-dose combinations across plates, calculate stock-to-target volumes, and export complete 16-column Assay Studio 2.3.x candidate protocols, including multiple target plates in one CSV. Randomized controls and sparse-analysis matrices are supported.</p></div><div class="intro-count" aria-live="polite"><b id="step-count">0</b><span>dispensing steps</span></div></div>
-    <div class="info-strip" role="note"><strong>Instrument import:</strong> Import a genuine Assay Studio 2.3.x protocol CSV (like the supplied 384- or 1536-well examples). v3.2.1 preserves its five-line setup, all 16 dispensing columns, instrument settings, and L.100 source metadata. Generated files still require verification in Assay Studio. Do not run an unverified protocol.</div>
+    <div class="info-strip" role="note"><strong>No import required:</strong> Generate a new 16-column Assay Studio <strong>2.3.2.6</strong> candidate CSV directly from your design. Alternatively, use an instrument-exported CSV as a template to retain its metadata. Both exports require verification inside Assay Studio; the generated 96-well format has not been confirmed by the manufacturer.</div>
     <div id="alert" class="alert" role="status" aria-live="polite" hidden></div>
     <section class="meta-panel panel" aria-labelledby="setup-title">
       <div class="section-title"><h2 id="setup-title">1 · Protocol setup</h2><span class="muted">Files stay on your computer.</span></div>
@@ -40,10 +40,11 @@
         <label>Waste Well<input id="idot-waste-well" value="Waste Tube"></label>
       </div>
       <div class="file-strip">
-        <label class="file-button"><input type="file" id="load-template" accept=".csv,text/csv">Import Assay Studio CSV</label>
+        <label class="file-button"><input type="file" id="load-template" accept=".csv,text/csv">Load CSV as export template (optional)</label>
+        <label class="file-button outline"><input type="file" id="load-existing-protocol" accept=".csv,text/csv">Open Assay Studio protocol for editing</label>
         <label class="file-button outline"><input type="file" id="load-tasks" accept=".csv,text/csv">Import task-list CSV</label>
         <label class="file-button outline"><input type="file" id="load-project" accept=".json,application/json">Open saved project</label>
-        <div class="template-status" id="template-status">No Assay Studio 2.3.x template loaded</div>
+        <div class="template-status" id="template-status">No imported template (not required for new CSV)</div>
       </div>
     </section>
       <section class="panel design-panel" aria-labelledby="design-title">
@@ -121,8 +122,25 @@
         <div class="section-title"><h2 id="export-title">6 · Review and export</h2><span id="valid-badge" class="status-chip">Not ready</span></div>
         <div class="kpi-grid"><div><strong id="summary-steps">0</strong><span>Transfers</span></div><div><strong id="summary-targets">0</strong><span>Target wells</span></div><div><strong id="summary-total">0 µL</strong><span>Dispense total</span></div></div>
         <div id="validation" class="validation" role="status" aria-live="polite"></div>
+        <div class="export-methods">
+          <label class="export-method-label" for="export-method">Assay Studio CSV export method
+            <select id="export-method">
+              <option value="new" selected>Generate new Assay Studio CSV — no upload needed</option>
+              <option value="template">Use imported Assay Studio CSV as template</option>
+            </select>
+          </label>
+          <div id="new-export-options" class="new-export-options">
+            <label>Generated CSV software version <input id="export-software-version" value="2.3.2.6" readonly aria-readonly="true"></label>
+            <label>CSV user label <input id="export-user-label" value="Plate Studio" maxlength="100" spellcheck="false"></label>
+            <label>Dispense to waste <select id="export-dispense-waste"><option value="False" selected>False</option><option value="True">True</option></select></label>
+            <label>Use deionisation <select id="export-deionisation"><option value="True" selected>True</option><option value="False">False</option></select></label>
+            <label>Save liquids <select id="export-save-liquids"><option value="Never" selected>Never</option><option value="Ask">Ask</option></select></label>
+            <p class="micro export-method-note">Defaults are modeled on an Assay Studio 2.3.2.6 instrument-exported reference, not verified operating settings for your experiment. The export date/time are generated locally at download. Confirm all settings in Assay Studio.</p>
+          </div>
+          <p id="template-export-note" class="micro export-method-note" hidden>Load an existing Assay Studio 2.3.x CSV under Protocol setup. This method retains its header and per-liquid metadata; matching plate formats are required.</p>
+        </div>
         <div class="export-buttons"><button id="export-manifest" class="button subtle" type="button" disabled>Download design manifest</button><button id="export-matrix" class="button subtle" type="button" disabled>Download sparse model matrix</button><button id="export-responses" class="button subtle" type="button" disabled>Download measurements template</button><button id="export-batch" class="button primary" type="button" disabled>Download all plates ZIP</button><button id="export-all-protocol" class="button primary dark" type="button" disabled>Download combined multi-plate CSV</button><button id="export-list" class="button primary" type="button">Download task list CSV</button><button id="export-protocol" class="button primary dark" type="button">Download Assay Studio CSV</button><button id="export-json" class="button subtle" type="button">Save project JSON</button></div>
-        <p class="micro">The four-column task list is for planning only. The full Assay Studio 2.3.x export uses five setup/header rows and 16 dispensing columns, including I.DOT-specific 1536-well notation. Import a matching instrument-generated CSV first. For randomized designs, ZIP export also includes the control manifest, feature matrix, feature legend, and blank measurements template.</p>
+        <p class="micro">The four-column task list is for planning only. The full Assay Studio 2.3.x export uses five setup/header rows and 16 dispensing columns, including I.DOT-specific 1536-well notation. Choose Generate new CSV to export without a template, or choose the optional imported-template method. For randomized designs, ZIP export also includes the control manifest, feature matrix, feature legend, and blank measurements template.</p>
         <details class="preview"><summary>Preview first 14 CSV rows</summary><pre id="csv-preview" tabindex="0">Add transfers to preview CSV.</pre></details>
       </section>
     </div>

@@ -25,10 +25,29 @@
   }
   function slug(value) { return String(value || 'idot_protocol').trim().replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 90) || 'idot_protocol'; }
   function humanNumber(value) { return Number(C.numberText(value)).toLocaleString(undefined, { maximumFractionDigits: 8 }); }
+  function exportMethod() { return $('export-method').value; }
+  function exportTemplate() {
+    if (exportMethod() === 'template') return state.template;
+    if (exportMethod() !== 'new') throw new Error('Unknown CSV export method.');
+    return V.createDefaultTemplate(state.targetFormat, state.sourceFormat, {
+      userLabel: $('export-user-label').value,
+      dispenseToWaste: $('export-dispense-waste').value,
+      useDeionisation: $('export-deionisation').value,
+      saveLiquids: $('export-save-liquids').value
+    });
+  }
   function getValidation() {
     const tasks = C.validateTasks(state.tasks, state.sourceFormat, state.targetFormat, state.capacity);
-    const template = V.validateTemplate(state.template, state.targetFormat, state.sourceFormat);
+    let template;
+    try { template = V.validateTemplate(exportTemplate(), state.targetFormat, state.sourceFormat); }
+    catch (err) { template = {errors:[err.message],warnings:[]}; }
     return { tasks, template };
+  }
+  function updateExportMethod() {
+    const usesTemplate = exportMethod() === 'template';
+    $('new-export-options').hidden = usesTemplate;
+    $('template-export-note').hidden = !usesTemplate;
+    render();
   }
   function readInstrumentSettings() {
     return { sourcePlate: $('idot-source-plate').value, sourcePlateType: $('idot-source-type').value,
@@ -197,18 +216,25 @@
       root.appendChild(list);
     };
     renderMessages(errs, 'err');
-    if (!state.template) {
-      const p = document.createElement('p'); p.className = 'warn'; p.textContent = 'Import an Assay Studio CSV for full-protocol export.'; root.appendChild(p);
-    } else renderMessages(validation.template.errors, 'err');
+    if (exportMethod() === 'template' && !state.template) {
+      const p = document.createElement('p'); p.className = 'warn';
+      p.textContent = 'Template method selected: import a matching Assay Studio CSV or switch to Generate new CSV.';
+      root.appendChild(p);
+    } else if (exportMethod() === 'new' && ready) {
+      const p = document.createElement('p'); p.className = 'warn';
+      p.textContent = 'Generated Assay Studio 2.3.2.6 CSV is a candidate only. Confirm target-labware compatibility and instrument settings in Assay Studio.';
+      root.appendChild(p);
+    }
+    renderMessages(validation.template.errors, 'err');
     renderMessages(warns, 'warn');
     $('export-list').disabled = !ready;
     $('export-manifest').disabled = !state.plan;
     $('export-matrix').disabled = !state.plan;
     $('export-responses').disabled = !state.plan;
     $('export-batch').disabled = !state.plan;
-    $('export-protocol').disabled = !ready || !!validation.template.errors.length;
+    $('export-protocol').disabled = !ready || !state.tasks.length || !!validation.template.errors.length;
     const plateGroup = currentPlates();
-    $('export-all-protocol').disabled = !plateGroup || !!validation.template.errors.length ||
+    $('export-all-protocol').disabled = !plateGroup || !plateGroup.some(p=>p.tasks.length) || !!validation.template.errors.length ||
       plateGroup.some(p => C.validateTasks(p.tasks, state.sourceFormat, state.targetFormat, state.capacity).errors.length > 0);
   }
   function render() {
@@ -225,7 +251,7 @@
         (state.plan.plates[state.activePlate].reserved.length ? ' · ' + state.plan.plates[state.activePlate].reserved.length + ' reserved' : '') :
       totals.targetCount + ' filled wells';
     $('source-count').textContent = totals.sourceCount + ' used wells';
-    $('template-status').textContent = state.template ? 'Assay Studio ' + (state.template.softwareVersion || 'unknown') + ' · ' + (state.template.plateLabel || 'unknown target') + ' · 16-column CSV' : 'No 2.3.x instrument CSV template loaded';
+    $('template-status').textContent = state.template ? 'Assay Studio ' + (state.template.softwareVersion || 'unknown') + ' · ' + (state.template.plateLabel || 'unknown target') + ' · 16-column CSV' : 'No imported template — new CSV export remains available';
     renderWellDetails(); renderSources(totals.sources); renderValidation(validation);
     renderPlateNavigation();
     const locked = !!state.plan;
@@ -234,8 +260,8 @@
     $('design-status').textContent = locked ? 'Generated · ' + state.plan.summary.plates + ' plate(s) · ' +
       state.plan.summary.wells + ' treatments + ' + state.plan.summary.controls + ' controls. Manual editor locked until design is cleared.' : 'No randomized design generated yet.';
     try {
-      const preview = state.template && !validation.template.errors.length && !validation.tasks.errors.length
-        ? V.exportProtocol(state.tasks, state.template, state.name, state.sourceFormat, state.targetFormat,
+      const preview = state.tasks.length && !validation.template.errors.length && !validation.tasks.errors.length
+        ? V.exportProtocol(state.tasks, exportTemplate(), state.name, state.sourceFormat, state.targetFormat,
             { plateNumber: state.plan ? state.activePlate + 1 : (state.importedPlates ? state.importedPlates[state.activePlate].number : 1), settings: readInstrumentSettings() })
         : state.tasks.length ? C.exportTaskCsv(state.tasks, state.sourceFormat, state.targetFormat) : '';
       $('csv-preview').textContent = preview ? preview.split(/\r?\n/).slice(0, 14).join('\n') : 'Add valid transfers to preview CSV.';
@@ -295,22 +321,35 @@
     catch (err) { errorMessage(err); }
     finally { input.value = ''; }
   }
+  function importTemplateData(text) {
+    if (!V.isProtocol(text)) throw new Error('Expected a complete Assay Studio 2.3.x 16-column CSV.');
+    const imported = V.importProtocol(text, state.sourceFormat);
+    // Importing a template must never discard randomized assignments or manual transfers.
+    state.template = imported.template;
+    writeInstrumentSettings(imported.template);
+    $('export-method').value = 'template';
+    $('new-export-options').hidden = true;
+    $('template-export-note').hidden = false;
+    render();
+    announce('Imported Assay Studio ' + imported.template.softwareVersion +
+      ' metadata as an export template. Current well assignments were preserved. Verify plate-format compatibility.', 'success');
+  }
   function importTaskData(text, requireTemplate) {
     const isInstrument = V.isProtocol(text);
     if (requireTemplate && !isInstrument) throw new Error('Expected an Assay Studio 2.3.x CSV with sep=, and the 16-column row-five table header.');
     if (!requireTemplate && isInstrument) throw new Error('Use “Import Assay Studio CSV” for full 16-column protocols.');
     const parsed = isInstrument ? V.importProtocol(text, state.sourceFormat) : C.importCsv(text, state.sourceFormat, state.targetFormat);
-    if (state.plan && parsed.template) {
-      state.template = parsed.template; writeInstrumentSettings(parsed.template);
-      render(); announce('2.3.x instrument template loaded. Generated randomized plate assignments were preserved; the imported dispensing rows were not applied.', 'success');
-      return;
-    }
+    if (state.plan) throw new Error('Generated design is active. Use “Load CSV as export template” to preserve it, or return to manual editing before opening another protocol.');
+    if (state.tasks.length && !window.confirm('Replace current manually edited transfers with the imported protocol? Save the project first if needed.')) return;
     if (parsed.template) {
       state.template = parsed.template;
       state.targetFormat = parsed.targetFormat; state.sourceFormat = parsed.sourceFormat;
       $('target-format').value = String(state.targetFormat);
       $('source-format').value = String(state.sourceFormat);
       writeInstrumentSettings(parsed.template);
+      $('export-method').value = 'template';
+      $('new-export-options').hidden = true;
+      $('template-export-note').hidden = false;
       state.name = parsed.originalName; $('protocol-name').value = state.name;
     }
     state.plan = null; state.activePlate = 0;
@@ -324,7 +363,11 @@
   function saveProject() {
     const data = { formatVersion: 3, name: state.name, sourceFormat: state.sourceFormat, targetFormat: state.targetFormat,
       capacity: state.capacity, tasks: state.tasks, template: state.template, plan: state.plan, importedPlates: state.importedPlates,
-      instrumentSettings: readInstrumentSettings(), activePlate: state.activePlate };
+      instrumentSettings: readInstrumentSettings(), activePlate: state.activePlate,
+      exportMethod: exportMethod(), generatedCsvOptions: {
+        userLabel: $('export-user-label').value, dispenseToWaste: $('export-dispense-waste').value,
+        useDeionisation: $('export-deionisation').value, saveLiquids: $('export-save-liquids').value
+      } };
     download(slug(state.name) + '.json', JSON.stringify(data, null, 2) + '\n', 'application/json;charset=utf-8');
   }
   function savedFieldsMatch(saved, generated) {
@@ -370,6 +413,14 @@
         ['idot-liquid-class','liquidClass'],['idot-additional','additional'],['idot-waste-well','wasteWell']])
         if (project.instrumentSettings[field] !== undefined) $(id).value = project.instrumentSettings[field];
     } else if (state.template && state.template.kind === 'idot-v23') writeInstrumentSettings(state.template);
+    $('export-method').value = project.exportMethod === 'template' || (project.exportMethod === undefined && !!project.template) ? 'template' : 'new';
+    const generated = project.generatedCsvOptions || {};
+    $('export-user-label').value = generated.userLabel ?? 'Plate Studio';
+    $('export-dispense-waste').value = generated.dispenseToWaste === 'True' ? 'True' : 'False';
+    $('export-deionisation').value = generated.useDeionisation === 'False' ? 'False' : 'True';
+    $('export-save-liquids').value = generated.saveLiquids === 'Ask' ? 'Ask' : 'Never';
+    $('new-export-options').hidden = exportMethod() === 'template';
+    $('template-export-note').hidden = exportMethod() !== 'template';
     state.selected.clear(); state.example = false;
     $('protocol-name').value = state.name; $('source-format').value = String(state.sourceFormat);
     $('target-format').value = String(state.targetFormat); $('capacity').value = state.capacity;
@@ -384,6 +435,9 @@
       ...['A1','A2','A3','A4'].map(target => C.makeTask({ source: 'A2', target, volume: 0.1, liquid:'Example_B' }, 96, 96))
     ];
     state.example = true;
+    $('export-method').value = 'new';
+    $('new-export-options').hidden = false;
+    $('template-export-note').hidden = true;
     $('protocol-name').value = state.name; $('source-format').value = '96'; $('target-format').value = '96'; $('capacity').value = '';
     $('liquid-name').value = 'Example_A'; render(); renderDesignSummary();
     announce('Synthetic example loaded. Replace the example liquids and transfer volumes with your validated experimental values.', 'success');
@@ -508,9 +562,9 @@
   function updateDoseLabels() {
     const concentration = $('design-dose-mode').value === 'concentration';
     const stockHead = document.querySelector('.compound-table th:nth-child(3)');
-    const levelsHead = document.querySelector('.compound-table th:nth-child(4)');
+    const levelsHead = document.querySelector('.compound-table th:nth-child(5)');
     stockHead.textContent = concentration ? 'Stock concentration (same unit)' : 'Stock (not used in volume mode)';
-    levelsHead.textContent = concentration ? 'Target concentrations, comma-separated' : 'Dispense volumes (µL), comma-separated';
+    levelsHead.textContent = concentration ? 'Dose definition (target concentrations or log ranges)' : 'Dose definition (dispense volumes in µL)';
     $('design-unit').disabled = !concentration;
     $('design-stock-mic-multiple').disabled = !concentration;
     updateCompoundDoseRows();
@@ -623,7 +677,7 @@
         if (issues.errors.length) throw new Error('Plate ' + plate.number + ': ' + issues.errors.join('; '));
       }
       const files = plates.map(plate => ({ number: plate.number, tasks: plate.tasks }));
-      const csv = V.exportCombined({plates: files}, state.template, state.name,
+      const csv = V.exportCombined({plates: files}, exportTemplate(), state.name,
         state.sourceFormat, state.targetFormat, {settings:readInstrumentSettings()});
       download(slug(state.name) + '_ALL_TARGET_PLATES_assay_studio_2_3.csv', csv);
       announce('Exported one 16-column Assay Studio CSV for ' + plates.length + ' target plates. Validate the import in Assay Studio before running.', 'success');
@@ -640,7 +694,7 @@
         {name:'measurements_template.csv',content:D.measurementsTemplateCsv(plan)},
         {name:'experiment_config.json', content:JSON.stringify({ name:state.name, ...plan.config,
           summary:plan.summary, warnings:plan.warnings },null,2)+'\n'},
-        {name:'README.txt', content:'I.DOT Plate Studio v3.2.1 randomized design\n\n' +
+        {name:'README.txt', content:'I.DOT Plate Studio v3.2.2 randomized design\n\n' +
           'The manifest includes randomly placed untreated/vehicle/reference controls, and all-zero-dose wells even without programmed transfers.\n' +
           'Sparse model matrix is a candidate design for sparse-effects analysis, NOT an experimentally proven compressed sensing guarantee.\n' +
           'Fill measurements_template.csv after the assay, then use the optional Python fit script from this repository.\n' +
@@ -648,9 +702,11 @@
           'The actual_final_volume_uL and per-compound actual-concentration fields describe the prepared mixture, assuming all required steps are performed.\n' +
           'If external_top_up_uL is nonzero, this volume is NOT dispensed by this protocol.\n' +
           'Verify liquid classes, source plate type, additional volume per source well, and instrument settings.\n' +
-          'Instrument import is NOT confirmed until tested inside actual Assay Studio 2.3.x.\n'}
+          'Instrument import is NOT confirmed until tested inside actual Assay Studio 2.3.x.\n' +
+          'CSV export method: ' + exportMethod() + '; default generation uses the 2.3.2.6 header schema.\n'}
       ];
-      const template = V.validateTemplate(state.template, state.targetFormat, state.sourceFormat);
+      const selectedTemplate = exportTemplate();
+      const template = V.validateTemplate(selectedTemplate, state.targetFormat, state.sourceFormat);
       for (const plate of plan.plates) {
         const validation = C.validateTasks(plate.tasks,state.sourceFormat,state.targetFormat,state.capacity);
         if (validation.errors.length) throw new Error('Plate '+plate.number+': '+validation.errors.join(' '));
@@ -658,15 +714,15 @@
         files.push({name:'plates/plate_'+tag+'_tasks.csv',content:C.exportTaskCsv(plate.tasks,state.sourceFormat,state.targetFormat)});
         if (!template.errors.length && plate.tasks.length) {
           files.push({name:'plates/plate_'+tag+'_assay_studio_2_3.csv',content:V.exportProtocol(
-            plate.tasks,state.template,state.name+'_plate_'+tag,state.sourceFormat,state.targetFormat,
+            plate.tasks,selectedTemplate,state.name+'_plate_'+tag,state.sourceFormat,state.targetFormat,
             {plateNumber:plate.number,settings:readInstrumentSettings()})});
         }
       }
-      if (!template.errors.length) files.push({name:'ALL_TARGET_PLATES_assay_studio_2_3.csv',content:
-        V.exportCombined(plan,state.template,state.name,state.sourceFormat,state.targetFormat,{settings:readInstrumentSettings()})});
+      if (!template.errors.length && plan.plates.some(plate => plate.tasks.length)) files.push({name:'ALL_TARGET_PLATES_assay_studio_2_3.csv',content:
+        V.exportCombined(plan,selectedTemplate,state.name,state.sourceFormat,state.targetFormat,{settings:readInstrumentSettings()})});
       downloadFile(slug(state.name)+'_all_plates.zip',Z.zipFiles(files));
       announce('ZIP exported for '+plan.plates.length+' plates'+
-        (template.errors.length?' (task lists only; load a genuine instrument template for full protocols).':' with one combined I.DOT 2.3.x protocol.'),'success');
+        (template.errors.length?' (task lists only; load a matching template or switch to Generate new CSV).':plan.plates.some(plate=>plate.tasks.length)?' with a combined Assay Studio candidate CSV.':' (no instrument CSV: no dispensing tasks).'),'success');
     } catch (err) { errorMessage(err); }
   }
   function bind() {
@@ -708,6 +764,10 @@
     });
     $('export-matrix').addEventListener('click', () => {if (state.plan) download(slug(state.name)+'_sparse_model_matrix.csv',D.featureMatrixCsv(state.plan));});
     $('export-responses').addEventListener('click', () => {if (state.plan) download(slug(state.name)+'_measurements_template.csv',D.measurementsTemplateCsv(state.plan));});
+    $('export-method').addEventListener('change', updateExportMethod);
+    for (const id of ['export-user-label','export-dispense-waste','export-deionisation','export-save-liquids']) {
+      $(id).addEventListener(id === 'export-user-label' ? 'input' : 'change', render);
+    }
     $('export-batch').addEventListener('click', exportBatch);
     $('export-all-protocol').addEventListener('click', exportCombinedProtocol);
     for (const id of ['idot-source-plate','idot-source-type','idot-liquid-class','idot-additional','idot-waste-well']) $(id).addEventListener('input', render);
@@ -718,7 +778,8 @@
     $('source-well').addEventListener('change', render);
     $('apply').addEventListener('click', applyTransfers);
     $('remove-selected').addEventListener('click', removeSelected);
-    $('load-template').addEventListener('change', ev => readFile(ev.target, text => importTaskData(text, true)));
+    $('load-template').addEventListener('change', ev => readFile(ev.target, importTemplateData));
+    $('load-existing-protocol').addEventListener('change', ev => readFile(ev.target, text => importTaskData(text, true)));
     $('load-tasks').addEventListener('change', ev => readFile(ev.target, text => importTaskData(text, false)));
     $('load-project').addEventListener('change', ev => readFile(ev.target, loadProject));
     $('export-json').addEventListener('click', saveProject);
@@ -730,7 +791,7 @@
     $('export-protocol').addEventListener('click', () => {
       try {
         if (getValidation().tasks.errors.length) throw new Error('Resolve task validation issues before exporting.');
-        download(slug(state.name) + (state.plan ? '_plate_' + String(state.activePlate + 1).padStart(3,'0') : '') + '_assay_studio.csv', V.exportProtocol(state.tasks, state.template, state.name, state.sourceFormat, state.targetFormat,
+        download(slug(state.name) + (state.plan ? '_plate_' + String(state.activePlate + 1).padStart(3,'0') : '') + '_assay_studio.csv', V.exportProtocol(state.tasks, exportTemplate(), state.name, state.sourceFormat, state.targetFormat,
           {plateNumber:state.plan ? state.activePlate+1 : (state.importedPlates ? state.importedPlates[state.activePlate].number : 1),settings:readInstrumentSettings()}));
         announce('16-column Assay Studio 2.3.x candidate exported. Validate import and labware/liquid-class settings on the instrument.', 'success');
       } catch (err) { errorMessage(err); }

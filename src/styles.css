@@ -18,3 +18,13 @@
 /* v3.2 control wells are distinct from treatment and reserved wells. */
 .well.control { outline:2px solid #1c8475; outline-offset:-2px; box-shadow:inset 0 0 0 1px #1c8475; }
 .well.control.assigned-zero { background:#d6f2eb; }
+
+/* v3.2.2 — explicit new-CSV or imported-template export paths. */
+.export-methods{border:1px solid var(--line);border-radius:11px;background:#faf9fd;padding:13px;margin:0 0 16px}
+.export-method-label,.new-export-options label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:700;color:#59546c}
+.export-methods select,.export-methods input{min-height:38px;padding:0 10px;border:1px solid #ddd8e8;border-radius:8px;background:white;color:var(--ink);font:inherit;min-width:0;width:100%}
+.export-methods input[readonly]{background:#efedf3;color:#5e566c}
+.new-export-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:13px}
+.export-method-note{grid-column:1/-1;margin:2px 0 0}
+.new-export-options[hidden],#template-export-note[hidden]{display:none}
+@media(max-width:620px){.new-export-options{grid-template-columns:1fr}}
