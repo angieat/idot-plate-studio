@@ -70,7 +70,7 @@
   function normalizeConfig(raw) {
     assert(raw && typeof raw === 'object', 'Experimental design configuration is missing.');
     const mode = String(raw.mode || 'subset');
-    assert(['full', 'subset', 'replicates', 'sparse'].includes(mode), 'Choose full factorial, balanced subset, randomized replicates, or sparse-recovery sampling.');
+    assert(['full', 'subset', 'replicates', 'sparse', 'bernoulli'].includes(mode), 'Choose full factorial, balanced subset, randomized replicates, sparse sampling, or independent Bernoulli log-random dosing.');
     const targetFormat = Number(raw.targetFormat || 96), sourceFormat = Number(raw.sourceFormat || 96);
     C.formatInfo(targetFormat); assert([96,384].includes(sourceFormat), 'Source plate format must be 96 or 384.');
     const doseMode = raw.doseMode || 'concentration';
@@ -91,15 +91,16 @@
       const source = C.parseWell(item.source, sourceFormat).name;
       const stock = doseMode === 'concentration' ? positiveNumber(item.stock, name + ' stock concentration') : Number(item.stock) || 1;
       const doseScheme = String(item.doseScheme || 'manual');
-      assert(['manual', 'log'].includes(doseScheme), name + ': dose scheme must be manual or log.');
-      assert(doseScheme !== 'log' || doseMode === 'concentration', name + ': log ranges require concentration dosing, not direct dispense volumes.');
-      const logMin = doseScheme === 'log' ? positiveNumber(item.logMin, name + ' log minimum') : null;
-      const logMax = doseScheme === 'log' ? positiveNumber(item.logMax, name + ' log maximum') : null;
+      assert(['manual', 'log', 'continuous'].includes(doseScheme), name + ': choose manual, discrete log, or continuous log range.');
+      assert(doseScheme === 'manual' || doseMode === 'concentration', name + ': log ranges require concentration dosing, not direct dispense volumes.');
+      assert((mode === 'bernoulli') === (doseScheme === 'continuous'), name + ': continuous log ranges are required for Bernoulli dosing and unavailable in other design modes.');
+      const logMin = doseScheme !== 'manual' ? positiveNumber(item.logMin, name + ' log minimum') : null;
+      const logMax = doseScheme !== 'manual' ? positiveNumber(item.logMax, name + ' log maximum') : null;
       const logPoints = doseScheme === 'log' ? positiveInteger(item.logPoints, name + ' positive log points') : null;
-      const logIncludeZero = doseScheme === 'log' ? item.logIncludeZero !== false && item.logIncludeZero !== 'false' : null;
-      const levels = doseScheme === 'log'
-        ? logSpacedLevels(logMin, logMax, logPoints, logIncludeZero)
-        : parseLevels(item.levels, name);
+      const logIncludeZero = doseScheme === 'log' ? item.logIncludeZero !== false && item.logIncludeZero !== 'false' : doseScheme === 'continuous' ? true : null;
+      if (doseScheme === 'continuous') assert(logMin < logMax, name + ': continuous log minimum must be smaller than maximum.');
+      const levels = doseScheme === 'log' ? logSpacedLevels(logMin, logMax, logPoints, logIncludeZero)
+        : doseScheme === 'continuous' ? [0, logMin, logMax] : parseLevels(item.levels, name);
       if (doseMode === 'concentration') assert(levels.every(v => v <= stock), name + ': a target concentration exceeds its stock concentration.');
       else if (volumeBasis === 'final') assert(levels.every(v => v <= finalVolume), name + ': a dispense volume exceeds final volume.');
       return { name, source, stock, levels, doseScheme, logMin, logMax, logPoints, logIncludeZero };
@@ -112,8 +113,14 @@
     const subsetSize = positiveInteger(raw.subsetSize ?? 96, 'Subset size');
     const uniqueCount = positiveInteger(raw.uniqueCount ?? 24, 'Unique combination count');
     const replicates = positiveInteger(raw.replicates ?? 3, 'Replicates');
-    const totalPossible = compounds.reduce((n, c) => n * c.levels.length, 1);
-    const sampleCount = mode === 'full' ? totalPossible : ['subset','sparse'].includes(mode) ? subsetSize : uniqueCount * replicates;
+    // A continuously drawn positive dose has no finite enumerated concentration grid.
+    const totalPossible = mode === 'bernoulli' ? null : compounds.reduce((n, c) => n * c.levels.length, 1);
+    const sampleCount = mode === 'full' ? totalPossible : ['subset','sparse','bernoulli'].includes(mode) ? subsetSize : uniqueCount * replicates;
+    const inclusionProbability = raw.inclusionProbability === undefined || raw.inclusionProbability === null || String(raw.inclusionProbability).trim() === ''
+      ? 0.5 : Number(raw.inclusionProbability);
+    assert(Number.isFinite(inclusionProbability) && inclusionProbability >= 0 && inclusionProbability <= 1,
+      'Inclusion probability must be a number between 0 and 1 (0.5 gives 50/50).');
+    if (mode === 'bernoulli') assert(doseMode === 'concentration', 'Independent log-random dosing requires concentration mode.');
     assert(sampleCount <= 25000, 'This design exceeds 25,000 assignments. Reduce the factorial or split your experiment.');
     if (mode === 'subset' || mode === 'sparse') assert(subsetSize <= totalPossible, 'A no-replacement subset cannot exceed ' + totalPossible + ' unique combinations.');
     if (mode === 'replicates') assert(uniqueCount <= totalPossible, 'Unique combinations cannot exceed ' + totalPossible + '.');
@@ -143,7 +150,12 @@
       assert(controls.referenceIndex >= 0, 'Reference control compound must match a compound name exactly.');
       const level = positiveNumber(controls.referenceDose, 'Reference control dose');
       controls.referenceLevel = compounds[controls.referenceIndex].levels.indexOf(level);
-      assert(controls.referenceLevel >= 0 && level > 0, 'Reference control dose must match a positive level of that compound.');
+      if (mode === 'bernoulli') {
+        assert(level >= compounds[controls.referenceIndex].logMin && level <= compounds[controls.referenceIndex].logMax,
+          'Reference control dose must be inside the selected compound continuous log range.');
+        controls.referenceLevel = 1;
+      } else assert(controls.referenceLevel >= 0 && level > 0, 'Reference control dose must match a positive level of that compound.');
+      controls.referenceDose = level;
     }
     const perPlateTreatments = capacity - controls.total;
     assert(Math.ceil(sampleCount / perPlateTreatments) <= 200, 'This design exceeds 200 plates. Change the plate format or reduce the design.');
@@ -154,6 +166,14 @@
     if (controls.vehicle) {
       assert(controls.vehicleVolume >= minTransfer - 1e-12 && controls.vehicleVolume <= maxTransfer + 1e-9,
         'Vehicle dispense is outside configured instrument volume limits.');
+    }
+    if (mode === 'bernoulli') for (const comp of compounds) {
+      // Any included positive draw must be physically eligible, not merely the sampled values.
+      const low = comp.logMin * finalVolume / comp.stock;
+      const high = comp.logMax * finalVolume / comp.stock;
+      assert(low >= minTransfer - 1e-12, comp.name + ': continuous lower concentration would dispense ' +
+        C.numberText(low) + ' µL, below configured minimum ' + minTransfer + ' µL. Increase range minimum or dilute stock.');
+      assert(high <= maxTransfer + 1e-9, comp.name + ': continuous upper concentration would exceed maximum transfer ' + maxTransfer + ' µL.');
     }
     const addDiluent = !!raw.addDiluent;
     assert(volumeBasis !== 'starting' || !addDiluent,
@@ -167,7 +187,7 @@
     }
     return { mode, targetFormat, sourceFormat, doseMode, volumeBasis, finalVolume,
       maxWellVolume, stockMicMultiple, unit, compounds, reserved: reserved.sort(),
-      subsetSize, uniqueCount, replicates, sampleCount, totalPossible, capacity, controls, perPlateTreatments,
+      subsetSize, uniqueCount, replicates, sampleCount, totalPossible, inclusionProbability, capacity, controls, perPlateTreatments,
       seed: String(raw.seed ?? '1701'), addDiluent, diluentSource, diluentName, minTransfer, maxTransfer, sourceCapacity };
   }
   function enumerate(compounds) {
@@ -246,7 +266,17 @@
     }
     return shuffle(selected,random);
   }
+  function continuousLogSample(min, max, random) {
+    return Math.min(max, Math.max(min, Math.exp(Math.log(min) + random() * (Math.log(max) - Math.log(min)))));
+  }
   function makeAssignments(config, random) {
+    if (config.mode === 'bernoulli') {
+      return Array.from({length:config.subsetSize}, (_, i) => {
+        const doses = config.compounds.map(c => random() < config.inclusionProbability
+          ? continuousLogSample(c.logMin, c.logMax, random) : 0);
+        return { id:i+1, indices:doses.map(d=>d>0?1:0), doses, replicate:1 };
+      });
+    }
     const pool = enumerate(config.compounds);
     if (config.mode === 'full') return shuffle(pool, random).map(c => ({ ...c, replicate: 1 }));
     const count = ['subset','sparse'].includes(config.mode) ? config.subsetSize : config.uniqueCount;
@@ -256,10 +286,10 @@
     for (const c of subset) for (let replicate = 1; replicate <= config.replicates; replicate++) result.push({ ...c, replicate });
     return shuffle(result, random);
   }
-  function calculateVolumes(config, indices) {
+  function calculateVolumes(config, indices, explicitDoses) {
     const doses = [], volumes = [];
     for (let i = 0; i < indices.length; i++) {
-      const comp = config.compounds[i], dose = comp.levels[indices[i]];
+      const comp = config.compounds[i], dose = explicitDoses ? explicitDoses[i] : comp.levels[indices[i]];
       const volume = config.doseMode === 'concentration' ? dose * config.finalVolume / comp.stock : dose;
       assert(Number.isFinite(volume), 'Non-finite volume for ' + comp.name);
       doses.push(dose); volumes.push(volume);
@@ -316,7 +346,10 @@
         const zeroIndices = config.compounds.map(c => c.levels.indexOf(0));
         const indices = !isControl ? entry.indices.slice() : zeroIndices;
         if (isControl && entry.controlType === 'reference') indices[config.controls.referenceIndex] = config.controls.referenceLevel;
-        const v = calculateVolumes(config, indices);
+        const explicitDoses = !isControl ? entry.doses :
+          config.mode === 'bernoulli' && entry.controlType === 'reference'
+            ? config.compounds.map((_,i) => i === config.controls.referenceIndex ? config.controls.referenceDose : 0) : null;
+        const v = calculateVolumes(config, indices, explicitDoses);
         const vehicleVolume = isControl && entry.controlType === 'vehicle' ? config.controls.vehicleVolume : 0;
         if (vehicleVolume) {
           if (config.volumeBasis === 'starting') v.actualFinalVolume += vehicleVolume;
@@ -361,12 +394,14 @@
     else if (!config.addDiluent) warnings.push('The I.DOT tasks omit external top-ups; add manifest external_top_up_uL separately to reach final volume.');
     if (config.controls.vehicle) warnings.push('Vehicle controls do not automatically match the solvent carried by every antibiotic stock. Match solvents experimentally.');
     if (config.mode === 'sparse') warnings.push('Sparse-recovery sampling is a balanced, seeded heuristic, not a guarantee of compressed-sensing recovery. Analyze measured outcomes with a sparsity-regularized model and validate predictions.');
-    if (config.compounds.some(c => c.doseScheme === 'log')) warnings.push('Logarithmic dosing uses discrete geometric concentrations per source, not continuously random concentrations. Generated levels and random assignments are recorded in the manifest.');
+    if (config.mode === 'bernoulli') warnings.push('Continuous log-random doses are independent per treatment well and source; explicitly assigned controls override inclusion draws. This is random screening, NOT an optimized compressed-sensing design. Keep the seeded manifest and validate sparse-model predictions independently. Instrument dispense precision means physically delivered concentrations are not literally unlimited.');
+    if (config.compounds.some(c => c.doseScheme === 'log')) warnings.push('Discrete log-range dosing uses a fixed geometric dose grid.');
     if (config.sourceCapacity > 0) warnings.push('Source checks exclude priming and dead volume.');
     return {version:2, config, plates, warnings, summary:summarize(config, plates)};
   }
   function summarize(config, plates) {
-    const counts = config.compounds.map(c => c.levels.map(() => 0));
+    const continuous = config.mode === 'bernoulli';
+    const counts = config.compounds.map(c => Array(continuous ? 2 : c.levels.length).fill(0));
     const pairCounts = [];
     for (let i = 0; i < config.compounds.length; i++) for (let j = i + 1; j < config.compounds.length; j++) {
       pairCounts.push({ a: i, b: j, cells: new Set() });
@@ -381,7 +416,7 @@
       wells: plates.reduce((n,p)=>n+p.assignments.filter(a=>a.role!=='control').length,0),
       transfers: plates.reduce((n,p)=>n+p.tasks.length,0), singleLevelCounts: counts,
       pairCoverage: pairCounts.map(p=>({ a:config.compounds[p.a].name,b:config.compounds[p.b].name,
-        observed:p.cells.size,possible:config.compounds[p.a].levels.length*config.compounds[p.b].levels.length })) };
+        observed:p.cells.size,possible:continuous ? 4 : config.compounds[p.a].levels.length*config.compounds[p.b].levels.length })) };
   }
   function manifestCsv(plan) {
     assert(plan && plan.config && Array.isArray(plan.plates), 'Missing generated design');
@@ -451,7 +486,37 @@
     }
     return entries;
   }
+  function continuousFeatureSpec(cfg) {
+    const spec = [];
+    cfg.compounds.forEach((_,i)=> {
+      spec.push({name:'main__'+i+'__presence',i,kind:'presence'});
+      spec.push({name:'main__'+i+'__logdose',i,kind:'logdose'});
+    });
+    for (let i=0;i<cfg.compounds.length;i++) for (let k=i+1;k<cfg.compounds.length;k++) {
+      spec.push({name:'pair__'+i+'__'+k+'__presence',i,k,kind:'presence'});
+      spec.push({name:'pair__'+i+'__'+k+'__logdose',i,k,kind:'logdose'});
+    }
+    return spec;
+  }
+  function normalizedPositiveLogDose(dose, comp) {
+    return dose === 0 ? 0 : Math.max(0, Math.min(1, Math.log(dose / comp.logMin) / Math.log(comp.logMax / comp.logMin)));
+  }
+  function continuousFeatureValue(f, a, cfg) {
+    const d1 = a.doses[f.i], present1 = d1 > 0;
+    const v1 = f.kind === 'presence' ? Number(present1) : normalizedPositiveLogDose(d1, cfg.compounds[f.i]);
+    if (f.k === undefined) return v1;
+    const d2 = a.doses[f.k], present2 = d2 > 0;
+    return v1 * (f.kind === 'presence' ? Number(present2) : normalizedPositiveLogDose(d2, cfg.compounds[f.k]));
+  }
   function featureMatrixCsv(plan) {
+    if (plan.config.mode === 'bernoulli') {
+      const cfg=plan.config, spec=continuousFeatureSpec(cfg);
+      const rows=[['plate','well','status','control_type','combination_id','replicate',...spec.map(f=>f.name)]];
+      for (const plate of plan.plates) for (const a of plate.assignments) rows.push([
+        a.plate,a.well,a.role==='control'?'control':'treatment',a.controlType||'',a.combinationId,a.replicate,
+        ...spec.map(f => C.numberText(continuousFeatureValue(f,a,cfg)))]);
+      return C.csvRows(rows);
+    }
     const spec=featureSpec(plan.config), rows=[['plate','well','status','control_type','combination_id','replicate',
       ...spec.map(x=>x.name)]];
     for(const plate of plan.plates) for(const a of plate.assignments) {
@@ -461,6 +526,15 @@
     return C.csvRows(rows);
   }
   function featureLegendCsv(plan) {
+    if (plan.config.mode === 'bernoulli') {
+      const cfg=plan.config, rows=[['feature','feature_type','compound_1','level_1','compound_2','level_2','dose_unit']];
+      for (const f of continuousFeatureSpec(cfg)) rows.push([f.name,
+        (f.k===undefined?'main_':'pair_')+f.kind, cfg.compounds[f.i].name,
+        f.kind==='presence'?'binary 0/1':'normalized log dose (0 for absent)',
+        f.k===undefined?'':cfg.compounds[f.k].name,
+        f.k===undefined?'':f.kind==='presence'?'binary 0/1':'normalized log dose (0 for absent)',cfg.unit]);
+      return C.csvRows(rows);
+    }
     const cfg=plan.config;
     const rows=[['feature','feature_type','compound_1','level_1','compound_2','level_2','dose_unit']];
     for(const f of featureSpec(cfg)) rows.push([f.name,f.k===undefined?'main':'pair',
@@ -480,10 +554,10 @@
     return { mode: 'subset', targetFormat: 96, sourceFormat: 96, doseMode: 'concentration',
       volumeBasis: 'final', finalVolume: 20, maxWellVolume: null, stockMicMultiple: null, unit: 'µM',
       compounds: Array.from({length:6}, (_,i)=>({ name:'Compound_'+String.fromCharCode(65+i), source:'A'+(i+1), stock:1000, levels:[0,1,5] })),
-      reserved: '', subsetSize: 96, uniqueCount: 24, replicates: 3, seed: '1701',
+      reserved: '', subsetSize: 96, uniqueCount: 24, replicates: 3, seed: '1701', inclusionProbability: 0.5,
       controls:{untreated:0,vehicle:0,reference:0,vehicleSource:'H12',vehicleName:'Vehicle',vehicleVolume:0.3,referenceCompound:'',referenceDose:''},
       addDiluent: false, diluentSource: 'H12', diluentName: 'Diluent', minTransfer: 0.008, maxTransfer: 30, sourceCapacity: 80 };
   }
   return { seededRandom, shuffle, parseLevels, logSpacedLevels, parseReserved, normalizeConfig, enumerate, balancedPick, sparsePick,
-    calculateVolumes, generateDesign, manifestCsv, sourceMapCsv, featureMatrixCsv, featureLegendCsv, measurementsTemplateCsv, defaultConfig };
+    calculateVolumes, continuousLogSample, generateDesign, manifestCsv, sourceMapCsv, featureMatrixCsv, featureLegendCsv, measurementsTemplateCsv, defaultConfig };
 });

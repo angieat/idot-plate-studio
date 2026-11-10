@@ -458,7 +458,7 @@
       const schemeCell = document.createElement('td'), scheme = document.createElement('select');
       scheme.className = 'compound-dose-scheme';
       scheme.setAttribute('aria-label', 'Dose scheme for ' + item.name);
-      for (const [value, label] of [['manual','Manual levels'],['log','Log-spaced range']]) {
+      for (const [value, label] of [['manual','Manual levels'],['log','Discrete log-spaced'],['continuous','Continuous log-uniform']]) {
         const opt = document.createElement('option'); opt.value = value; opt.textContent = label; scheme.appendChild(opt);
       }
       scheme.value = item.doseScheme || 'manual'; schemeCell.appendChild(scheme); tr.appendChild(schemeCell);
@@ -491,14 +491,21 @@
     }
   }
   function updateCompoundDoseRow(tr) {
-    const isLog = tr.querySelector('.compound-dose-scheme').value === 'log';
+    const scheme = tr.querySelector('.compound-dose-scheme').value;
+    const isLog = scheme === 'log' || scheme === 'continuous';
     const canLog = $('design-dose-mode').value === 'concentration';
     const manual = tr.querySelector('.compound-levels');
     const range = tr.querySelector('.compound-log-fields');
     manual.hidden = isLog; manual.disabled = isLog;
     range.hidden = !isLog;
-    range.querySelectorAll('input').forEach(input => { input.disabled = !isLog || !canLog; });
+    range.querySelectorAll('input').forEach(input => {
+      const isDiscreteSetting = input.classList.contains('compound-log-points') || input.classList.contains('compound-log-zero');
+      input.disabled = !isLog || !canLog || (scheme === 'continuous' && isDiscreteSetting);
+    });
     tr.querySelector('.compound-dose-scheme').querySelector('option[value="log"]').disabled = !canLog;
+    tr.querySelector('.compound-dose-scheme').querySelector('option[value="continuous"]').disabled = !canLog;
+    range.querySelector('.compound-log-points').closest('label').hidden = scheme === 'continuous';
+    range.querySelector('.compound-zero-label').hidden = scheme === 'continuous';
   }
   function updateCompoundDoseRows() {
     for (const tr of $('compound-rows').querySelectorAll('tr')) updateCompoundDoseRow(tr);
@@ -522,7 +529,8 @@
       finalVolume: $('design-final-volume').value, unit: $('design-unit').value,
       maxWellVolume: state.capacity, stockMicMultiple: $('design-stock-mic-multiple').value,
       seed: $('design-seed').value, reserved: $('design-reserved').value,
-      subsetSize: $('design-subset-size').value, uniqueCount: $('design-unique-size').value,
+      subsetSize: $('design-mode').value === 'bernoulli' ? $('design-bernoulli-count').value : $('design-subset-size').value,
+      inclusionProbability: $('design-inclusion-probability').value, uniqueCount: $('design-unique-size').value,
       replicates: $('design-replicates').value, compounds,
       controls: { untreated: $('control-untreated').value, vehicle: $('control-vehicle').value,
         reference: $('control-reference').value, vehicleSource: $('control-vehicle-source').value,
@@ -540,7 +548,8 @@
       'design-final-volume': config.finalVolume, 'design-unit': config.unit,
       'design-stock-mic-multiple': config.stockMicMultiple ?? '',
       'design-seed': config.seed, 'design-reserved': Array.isArray(config.reserved) ? config.reserved.join(',') : config.reserved,
-      'design-subset-size': config.subsetSize, 'design-unique-size': config.uniqueCount,
+      'design-subset-size': config.subsetSize, 'design-bernoulli-count': config.subsetSize,
+      'design-inclusion-probability': config.inclusionProbability ?? 0.5, 'design-unique-size': config.uniqueCount,
       'design-replicates': config.replicates, 'design-diluent-source': config.diluentSource,
       'design-diluent-name': config.diluentName, 'design-min-transfer': config.minTransfer,
       'design-max-transfer': config.maxTransfer, 'design-source-capacity': config.sourceCapacity,
@@ -558,6 +567,22 @@
   function updateDesignMode() {
     const mode = $('design-mode').value;
     for (const el of document.querySelectorAll('[data-show-mode]')) el.hidden = el.dataset.showMode !== mode && !(mode === 'sparse' && el.dataset.showMode === 'subset');
+  }
+  function changeDesignMode() {
+    const continuous = $('design-mode').value === 'bernoulli';
+    // Selecting Bernoulli mode makes every source eligible for an independent
+    // log-uniform concentration draw, without requiring six manual edits.
+    for (const tr of $('compound-rows').querySelectorAll('tr')) {
+      const scheme = tr.querySelector('.compound-dose-scheme');
+      if (continuous) scheme.value = 'continuous';
+      else if (scheme.value === 'continuous') scheme.value = 'log';
+      updateCompoundDoseRow(tr);
+    }
+    if (continuous) {
+      $('design-dose-mode').value = 'concentration';
+      updateDoseLabels();
+    }
+    updateDesignMode();
   }
   function updateDoseLabels() {
     const concentration = $('design-dose-mode').value === 'concentration';
@@ -613,7 +638,7 @@
     const plan = state.plan, top = document.createElement('div'); top.className = 'design-summary-top';
     for (const [label, value] of [
       ['Treatments',plan.summary.wells.toLocaleString()],['Controls',plan.summary.controls.toLocaleString()],['Plates',plan.summary.plates.toLocaleString()],
-      ['Dispensing steps',plan.summary.transfers.toLocaleString()],['Possible combinations',plan.config.totalPossible.toLocaleString()]
+      ['Dispensing steps',plan.summary.transfers.toLocaleString()],['Possible combinations',plan.config.totalPossible === null ? 'Continuous' : plan.config.totalPossible.toLocaleString()]
     ]) {
       const cell = document.createElement('div'); cell.className = 'design-metric';
       const valueEl = document.createElement('b'); valueEl.textContent = value;
@@ -621,16 +646,18 @@
       cell.append(valueEl, labelEl); top.appendChild(cell);
     }
     root.appendChild(top);
-    const heading = document.createElement('h3'); heading.textContent = 'Level balance across generated assignments'; root.appendChild(heading);
+    const continuous = plan.config.mode === 'bernoulli';
+    const heading = document.createElement('h3');
+    heading.textContent = continuous ? 'Per-source inclusion counts across treatment wells' : 'Level balance across generated assignments'; root.appendChild(heading);
     const table = document.createElement('table'); table.className = 'compact-table';
     const thead = document.createElement('thead'), hrow = document.createElement('tr');
-    for (const h of ['Compound','Dose levels → counts']) { const th = document.createElement('th'); th.textContent = h; hrow.appendChild(th); }
+    for (const h of ['Compound',continuous ? 'Absent / Included' : 'Dose levels → counts']) { const th = document.createElement('th'); th.textContent = h; hrow.appendChild(th); }
     thead.appendChild(hrow); table.appendChild(thead);
     const tbody = document.createElement('tbody');
     for (let i = 0; i < plan.config.compounds.length; i++) {
       const tr = document.createElement('tr');
-      for (const v of [plan.config.compounds[i].name, plan.config.compounds[i].levels.map((l,j)=>
-        C.numberText(l) + ' → ' + plan.summary.singleLevelCounts[i][j]).join('  ·  ')]) {
+      for (const v of [plan.config.compounds[i].name, (continuous ? ['Absent → '+plan.summary.singleLevelCounts[i][0], 'Included → '+plan.summary.singleLevelCounts[i][1]].join('  ·  ') :
+        plan.config.compounds[i].levels.map((l,j)=> C.numberText(l) + ' → ' + plan.summary.singleLevelCounts[i][j]).join('  ·  '))]) {
         const td = document.createElement('td'); td.textContent = v; tr.appendChild(td);
       }
       tbody.appendChild(tr);
@@ -638,8 +665,11 @@
     table.appendChild(tbody); root.appendChild(table);
     const paragraph = document.createElement('p');
     const pair = plan.summary.pairCoverage;
-    paragraph.textContent = 'Observed all level pairs for ' + pair.filter(x=>x.observed===x.possible).length + ' / ' + pair.length +
-      ' compound pairs. Main effects are balanced by a greedy selection heuristic; this is not a guarantee of balanced higher-order interactions. ' +
+    paragraph.textContent = (continuous ? 'Each source was independently sampled with inclusion probability ' +
+      plan.config.inclusionProbability + '. Positive concentrations were drawn log-uniformly and are recorded per well. Inclusion patterns covered all 4 states for ' :
+      'Observed all level pairs for ') + pair.filter(x=>x.observed===x.possible).length + ' / ' + pair.length +
+      ' compound pairs. ' + (continuous ? 'The resulting design is not optimized for compressed-sensing recovery. ' :
+      'Main effects are balanced by a greedy selection heuristic; this is not a guarantee of balanced higher-order interactions. ') +
       plan.warnings.join(' ');
     root.appendChild(paragraph);
   }
@@ -694,9 +724,10 @@
         {name:'measurements_template.csv',content:D.measurementsTemplateCsv(plan)},
         {name:'experiment_config.json', content:JSON.stringify({ name:state.name, ...plan.config,
           summary:plan.summary, warnings:plan.warnings },null,2)+'\n'},
-        {name:'README.txt', content:'I.DOT Plate Studio v3.2.2 randomized design\n\n' +
+        {name:'README.txt', content:'I.DOT Plate Studio v3.2.3 randomized design\n\n' +
           'The manifest includes randomly placed untreated/vehicle/reference controls, and all-zero-dose wells even without programmed transfers.\n' +
           'Sparse model matrix is a candidate design for sparse-effects analysis, NOT an experimentally proven compressed sensing guarantee.\n' +
+          'Independent continuous mode uses per-source Bernoulli inclusion and log-uniform positive concentration draws.\n' +
           'Fill measurements_template.csv after the assay, then use the optional Python fit script from this repository.\n' +
           'Volume basis: ' + (plan.config.volumeBasis === 'starting' ? 'fixed starting medium; no top-up required.' : 'fixed final volume; external top-up may be required.') + '\n' +
           'The actual_final_volume_uL and per-compound actual-concentration fields describe the prepared mixture, assuming all required steps are performed.\n' +
@@ -749,7 +780,7 @@
       render();
     });
     $('target-format').addEventListener('change', ev => setFormats(ev.target.value, 'targetFormat'));
-    $('design-mode').addEventListener('change', updateDesignMode);
+    $('design-mode').addEventListener('change', changeDesignMode);
     $('design-dose-mode').addEventListener('change', updateDoseLabels);
     $('compound-rows').addEventListener('change', ev => {
       if (ev.target && ev.target.matches('.compound-dose-scheme')) updateCompoundDoseRow(ev.target.closest('tr'));

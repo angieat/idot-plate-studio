@@ -20,7 +20,7 @@
     </div>
   </header>
   <main class="shell">
-    <div class="intro"><div><h1>Design and randomize I.DOT plate experiments on your Mac.</h1><p>Assign compound-dose combinations across plates, calculate stock-to-target volumes, and export complete 16-column Assay Studio 2.3.x candidate protocols, including multiple target plates in one CSV. Randomized controls and sparse-analysis matrices are supported.</p></div><div class="intro-count" aria-live="polite"><b id="step-count">0</b><span>dispensing steps</span></div></div>
+    <div class="intro"><div><h1>Design and randomize I.DOT plate experiments on your Mac.</h1><p>Assign compound-dose combinations across plates, calculate stock-to-target volumes, and export complete 16-column Assay Studio 2.3.x candidate protocols, including multiple target plates in one CSV. Randomized controls, continuous log-uniform 50/50 source inclusion, and sparse-analysis matrices are supported.</p></div><div class="intro-count" aria-live="polite"><b id="step-count">0</b><span>dispensing steps</span></div></div>
     <div class="info-strip" role="note"><strong>No import required:</strong> Generate a new 16-column Assay Studio <strong>2.3.2.6</strong> candidate CSV directly from your design. Alternatively, use an instrument-exported CSV as a template to retain its metadata. Both exports require verification inside Assay Studio; the generated 96-well format has not been confirmed by the manufacturer.</div>
     <div id="alert" class="alert" role="status" aria-live="polite" hidden></div>
     <section class="meta-panel panel" aria-labelledby="setup-title">
@@ -50,7 +50,7 @@
       <section class="panel design-panel" aria-labelledby="design-title">
       <div class="section-title"><div><h2 id="design-title">2 · Randomized combinatorial experiment</h2><p>Generate full-factorial designs, sparse-recovery-oriented subsets, or randomized replicates across one or more plates.</p></div><span class="status-chip ok">Seeded & reproducible</span></div>
       <div class="design-grid">
-        <label>Design mode<select id="design-mode"><option value="subset">Balanced randomized subset</option><option value="full">Full factorial · all combinations</option><option value="replicates">Randomized replicates of subset</option><option value="sparse">Sparse-recovery sampling · diverse combinations</option></select></label>
+        <label>Design mode<select id="design-mode"><option value="subset">Balanced randomized subset</option><option value="full">Full factorial · all combinations</option><option value="replicates">Randomized replicates of subset</option><option value="sparse">Sparse-recovery sampling · diverse combinations</option><option value="bernoulli">Independent 50/50 inclusion + continuous log doses</option></select></label>
         <label>Dose interpretation<select id="design-dose-mode"><option value="concentration">Final concentration from stock</option><option value="volume">Direct dispense volume (µL)</option></select></label>
         <label>Volume calculation mode<select id="design-volume-basis"><option value="final">Fixed final volume, with top-up</option><option value="starting">Fixed starting medium + antibiotic additions</option></select></label>
         <label><span id="design-volume-label">Final assay volume (µL)</span><input id="design-final-volume" type="number" min="0.001" step="any" value="20"></label>
@@ -59,6 +59,8 @@
         <label>Random seed<input id="design-seed" value="1701" spellcheck="false"></label>
         <label>Reserved wells, every plate (optional)<input id="design-reserved" placeholder="e.g. H1:H12, A1" spellcheck="false"></label>
         <label class="mode-field" data-show-mode="subset">Unique conditions to sample<input id="design-subset-size" type="number" min="1" max="25000" step="1" value="96"></label>
+        <label class="mode-field" data-show-mode="bernoulli">Treatment wells to generate<input id="design-bernoulli-count" type="number" min="1" max="25000" step="1" value="72"></label>
+        <label class="mode-field" data-show-mode="bernoulli">Probability per source (0–1)<input id="design-inclusion-probability" type="number" min="0" max="1" step="0.01" value="0.5"></label>
         <label class="mode-field" data-show-mode="replicates">Distinct conditions<input id="design-unique-size" type="number" min="1" max="25000" step="1" value="24"></label>
         <label class="mode-field" data-show-mode="replicates">Replicates per condition<input id="design-replicates" type="number" min="1" max="25000" step="1" value="3"></label>
       </div>
@@ -71,12 +73,12 @@
         <label>Vehicle liquid name (Assay Studio)<input id="control-vehicle-name" value="Vehicle"></label>
         <label>Vehicle dispense per control (µL)<input id="control-vehicle-volume" type="number" min="0.001" step="any" value="0.3"></label>
         <label>Reference compound name<input id="control-reference-compound" placeholder="Exact compound name"></label>
-        <label>Reference compound dose (µM or µL)<input id="control-reference-dose" type="number" step="any" placeholder="Must match a listed nonzero level"></label>
+        <label>Reference compound dose (µM or µL)<input id="control-reference-dose" type="number" step="any" placeholder="Listed positive level, or any concentration in continuous range"></label>
       </div>
       <p class="micro">A reference control is one compound at one listed concentration; the other antibiotics are zero. Match vehicle controls to your actual stock solvents—this planner cannot infer DMSO or solvent contributions.</p>
-      <div class="design-table-head"><h3>Compounds and dose levels</h3><p>For each source, choose manual levels or a log-spaced concentration range. A log range uses 2–4 geometrically spaced positive doses; include 0 to allow absent-compound combinations and antibiotic-free controls. Stock and target units must match.</p></div>
+      <div class="design-table-head"><h3>Compounds and dose levels</h3><p>For each source, choose manual levels, discrete log spacing, or continuous log-uniform dosing. Continuous dosing requires Independent 50/50 inclusion mode and draws a new positive concentration per included antibiotic/well. Stock and target concentration units must match.</p></div>
       <div class="table-scroll"><table class="compact-table compound-table"><thead><tr><th>Compound / Liquid Name</th><th>I.DOT source well</th><th>Stock concentration</th><th>Dose scheme</th><th>Dose definition (same concentration unit)</th></tr></thead><tbody id="compound-rows"></tbody></table></div>
-      <p class="micro">Example for a 1,000× MIC stock: set log minimum = 0.1× MIC, maximum = 1× MIC, 3 positive points, and Include zero. Each compound then has 0, 0.1×, 0.316×, and 1× MIC as candidate doses. Sparse sampling chooses randomized combinations from these discrete levels; it does not generate arbitrary continuous concentrations.</p>
+      <p class="micro">Example for a 1,000× MIC stock: set log minimum = 0.1× MIC, maximum = 1× MIC, 3 positive points, and Include zero. Each compound then has 0, 0.1×, 0.316×, and 1× MIC as candidate doses. Choose Continuous log-uniform to generate a fresh concentration on the positive geometric range in every included source/well; independent inclusion probability defaults to 0.5. Reserved/control wells are not randomized into antibiotic treatments.</p>
       <div class="design-options">
         <label class="checkbox-label"><input id="design-add-diluent" type="checkbox"> Include top-up/diluent as I.DOT transfers</label>
         <label>Diluent source<input id="design-diluent-source" value="H12" spellcheck="false"></label>
