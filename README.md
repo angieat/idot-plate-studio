@@ -1,6 +1,7 @@
 # I.DOT Plate Studio v3
 IA Primarily AI v1.0
 **Offline macOS-compatible plate-layout and randomized experimental-design tool with Assay Studio 2.3.x CSV import/export.**
+**To immediately access the studio visit: https://angieat.github.io/idot-plate-studio/**
 
 Open `index.html` in Safari, Firefox, or Chrome on a Mac. No Python, server, package installation, or online account is needed. Alternatively, use the standalone `dist/I.DOT_Plate_Studio_v3_for_Mac.html` distribution. The app **does not control the I.DOT hardware**.
 
